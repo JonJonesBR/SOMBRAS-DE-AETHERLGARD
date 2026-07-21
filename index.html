@@ -2870,6 +2870,16 @@ var CONFIG = {
         }
     },
 
+    // Equipment unique affixes - only rolled for Epico+ rarity, one per item
+    EQUIPMENT_AFFIX_CHANCE: 0.5, // chance an Epico+ item rolls an affix at all
+    EQUIPMENT_AFFIXES: {
+        thornPct:       { Epico: 0.08, Lendario: 0.14, Mitico: 0.22 },
+        poisonPotency:  { Epico: 0.15, Lendario: 0.25, Mitico: 0.40 },
+        dodgeChance:    { Epico: 0.05, Lendario: 0.08, Mitico: 0.12 },
+        equipLifesteal: { Epico: 0.05, Lendario: 0.09, Mitico: 0.15 },
+        cdrMult:        { Epico: 0.08, Lendario: 0.14, Mitico: 0.20 }
+    },
+
     // Equipment prefixes for flavor names
     EQUIPMENT_PREFIXES: ['Antigo', 'Amaldioado', 'Sagrado', 'Sombrio', 'Brilhante', 'Rnico', 'Vingativo', 'Eterno', 'Primordial', 'Arcano'],
 
@@ -6364,6 +6374,13 @@ const EquipmentSystem = {
         // Roll stats
         const stats = this.rollStats(slot, rarity);
 
+        // Roll a unique affix for Epico+ rarity
+        if ((rarity === 'Epico' || rarity === 'Lendario' || rarity === 'Mitico') && Math.random() < CONFIG.EQUIPMENT_AFFIX_CHANCE) {
+            const affixKeys = Object.keys(CONFIG.EQUIPMENT_AFFIXES);
+            const affixKey = affixKeys[Math.floor(Math.random() * affixKeys.length)];
+            stats[affixKey] = CONFIG.EQUIPMENT_AFFIXES[affixKey][rarity];
+        }
+
         // Generate name
         const prefix = CONFIG.EQUIPMENT_PREFIXES[Math.floor(Math.random() * CONFIG.EQUIPMENT_PREFIXES.length)];
         const suffix = CONFIG.EQUIPMENT_SUFFIXES[Math.floor(Math.random() * CONFIG.EQUIPMENT_SUFFIXES.length)];
@@ -6414,6 +6431,11 @@ const EquipmentSystem = {
         if(s.damageMult) lines.push(`+${Math.floor(s.damageMult*100)}% Dano`);
         if(s.speedMult) lines.push(`+${Math.floor(s.speedMult*100)}% Velocidade`);
         if(s.critChance) lines.push(`+${Math.floor(s.critChance*100)}% Crtico`);
+        if(s.thornPct) lines.push(`+${Math.floor(s.thornPct*100)}% Reflexo de Dano`);
+        if(s.poisonPotency) lines.push(`+${Math.floor(s.poisonPotency*100)}% Potncia de Veneno`);
+        if(s.dodgeChance) lines.push(`+${Math.floor(s.dodgeChance*100)}% Esquiva`);
+        if(s.equipLifesteal) lines.push(`+${Math.floor(s.equipLifesteal*100)}% Roubo de Vida`);
+        if(s.cdrMult) lines.push(`+${Math.floor(s.cdrMult*100)}% Reduo de Cooldown`);
         return lines.join('\n');
     },
 
@@ -6440,6 +6462,11 @@ const EquipmentSystem = {
         if(s.damageMult) player.damageMult = (player.damageMult || 1) + s.damageMult;
         if(s.speedMult) player.speed *= (1 + s.speedMult);
         if(s.critChance) player.critChance = (player.critChance || 0) + s.critChance;
+        if(s.thornPct) player.thornPct = (player.thornPct || 0) + s.thornPct;
+        if(s.poisonPotency) player.poisonPotency = (player.poisonPotency || 1) + s.poisonPotency;
+        if(s.dodgeChance) player.dodgeChance = (player.dodgeChance || 0) + s.dodgeChance;
+        if(s.equipLifesteal) player.equipLifesteal = (player.equipLifesteal || 0) + s.equipLifesteal;
+        if(s.cdrMult) player.cdrMult = (player.cdrMult || 0) + s.cdrMult;
 
         Debug.info(`Equipped: ${equipment.name} (${equipment.rarity})`);
     },
@@ -6453,6 +6480,11 @@ const EquipmentSystem = {
         if(s.damageMult) player.damageMult = Math.max(1, (player.damageMult || 1) - s.damageMult);
         if(s.speedMult) player.speed = Math.max(1, player.speed / (1 + s.speedMult));
         if(s.critChance) player.critChance = Math.max(0, (player.critChance || 0) - s.critChance);
+        if(s.thornPct) player.thornPct = Math.max(0, (player.thornPct || 0) - s.thornPct);
+        if(s.poisonPotency) player.poisonPotency = Math.max(1, (player.poisonPotency || 1) - s.poisonPotency);
+        if(s.dodgeChance) player.dodgeChance = Math.max(0, (player.dodgeChance || 0) - s.dodgeChance);
+        if(s.equipLifesteal) player.equipLifesteal = Math.max(0, (player.equipLifesteal || 0) - s.equipLifesteal);
+        if(s.cdrMult) player.cdrMult = Math.max(0, (player.cdrMult || 0) - s.cdrMult);
     },
 
     // Draw equipment HUD
@@ -11951,9 +11983,9 @@ class Bullet {
                     if(typeof ElementalSystem !== 'undefined') ElementalSystem.applyStatus(e, 'poison', 1, 90, source);
                         spawnParticles(e.x, e.y, '#33ff33', 5, 2);
                     }
-                    // Lifesteal from weapon
-                    if(this.isP && source && source.weaponLifesteal) {
-                        const heal = Math.floor(this.dmg * source.weaponLifesteal);
+                    // Lifesteal from weapon + equipment
+                    if(this.isP && source && ((source.weaponLifesteal || 0) + (source.equipLifesteal || 0)) > 0) {
+                        const heal = Math.floor(this.dmg * ((source.weaponLifesteal || 0) + (source.equipLifesteal || 0)));
                         source.hp = Math.min(source.maxHp, source.hp + heal);
                         DamageNumbers.add(source.x, source.y, `+${heal}`, 'heal');
                     }
@@ -12191,7 +12223,7 @@ class Player extends Entity {
     useSkill() {
         if(this.skillCooldown > 0) return;
         if(this.type === 'warrior') {
-            this.skillCooldown = CONFIG.WARRIOR_SLAM_COOLDOWN;
+            this.skillCooldown = Math.floor(CONFIG.WARRIOR_SLAM_COOLDOWN * Math.max(0.5, 1 - (this.cdrMult || 0)));
             // Ground slam visual indicators
             const slamRange = this.skills.aoe1 ? CONFIG.WARRIOR_SLAM_RANGE_UPGRADED : CONFIG.WARRIOR_SLAM_RANGE;
             // Spawn ground ring indicator (particles in a circle)
@@ -12233,7 +12265,7 @@ class Player extends Entity {
             }
             shake = CONFIG.SHAKE_BOSS_SPAWN; addLog(this.skills.ult1 ? " WAR CRY!" : " GROUND SLAM!");
         } else if(this.type === 'rogue') {
-            this.skillCooldown = CONFIG.ROGUE_SHADOW_STEP_COOLDOWN;
+            this.skillCooldown = Math.floor(CONFIG.ROGUE_SHADOW_STEP_COOLDOWN * Math.max(0.5, 1 - (this.cdrMult || 0)));
             rogueClones.push({ x: this.x, y: this.y, type: this.type, color: this.color, timer: CONFIG.ROGUE_CLONE_DURATION, alive: true });
             const stunRangeSq = CONFIG.ROGUE_CLONE_STUN_RADIUS * CONFIG.ROGUE_CLONE_STUN_RADIUS;
             for(let i = 0; i < entities.length; i++) {
@@ -12269,7 +12301,7 @@ class Player extends Entity {
             }
             spawnParticles(this.x, this.y, '#33ff33', 25, 5); SND.play(600, 'square', 0.1, 0.25); SND.schedule(() => SND.play(800, 'square', 0.08, 0.2), 60); shake = 5; addLog(this.skills.ult1 ? " ARROW STORM!" : " ARROW BARRAGE!");
         } else if(this.type === 'mage') {
-            this.skillCooldown = CONFIG.MAGE_ARCANE_STORM_COOLDOWN;
+            this.skillCooldown = Math.floor(CONFIG.MAGE_ARCANE_STORM_COOLDOWN * Math.max(0.5, 1 - (this.cdrMult || 0)));
             if(this.skills.ult1) {
                 spawnParticles(this.x, this.y, '#ff6600', CONFIG.PARTICLE_SPAWN_ACHIEVEMENT, 8);
                 spawnParticles(this.x, this.y, '#ff4400', 20, 10);
@@ -12669,7 +12701,7 @@ class Player extends Entity {
 
     takeDamage(a, m, source=null) {
         if (this.invincibleTimer > 0) return;
-        if (this.dodgeChance && a > 0 && Math.random() < this.dodgeChance) { spawnParticles(this.x, this.y, '#33ff33', 8, 4); DamageNumbers.add(this.x, this.y, 'ESQUIVA!', 'heal'); return; }
+        if (this.dodgeChance && a > 0 && Math.random() < Math.min(0.75, this.dodgeChance)) { spawnParticles(this.x, this.y, '#33ff33', 8, 4); DamageNumbers.add(this.x, this.y, 'ESQUIVA!', 'heal'); return; }
         if(this.type === 'mage' && this.orbShieldReady && a > 0) { this.orbShieldReady = false; this.orbShieldTimer = 0; spawnParticles(this.x, this.y, COLORS.CLASS_MAGE, 15, 4); SND.play(440, 'sine', 0.2, 0.2); DamageNumbers.add(this.x, this.y, 'ORB SHIELD!', 'heal'); return; }
         if(this.type === 'rogue' || this.type === 'mage') this.mageComboCount = 0;
         let dmg = a;
