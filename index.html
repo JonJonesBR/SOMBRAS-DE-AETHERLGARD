@@ -5036,7 +5036,10 @@ window.SND = {
             if(this.ctx) return;
             // Load persistent settings
             const saved = localStorage.getItem('audio_settings');
-            if(saved) this.settings = JSON.parse(saved);
+            if(saved) {
+                try { this.settings = JSON.parse(saved); }
+                catch(e) { console.warn('[SND] Corrupted audio_settings, using defaults', e); }
+            }
 
             this.ctx = new (window.AudioContext || window.webkitAudioContext)();
             {
@@ -6157,7 +6160,18 @@ const SkillTree = {
             if (skill.dmgMult) player.damageMult = (player.damageMult || 1) + skill.dmgMult;
             if (skill.speedMult) player.speed *= (1 + skill.speedMult);
             if (skill.critChance) player.critChance = (player.critChance || 0) + skill.critChance;
-            
+            if (skill.lifesteal) player.weaponLifesteal = (player.weaponLifesteal || 0) + skill.lifesteal;
+            if (skill.thorn) player.thornPct = (player.thornPct || 0) + skill.thorn;
+            if (skill.poison) player.poisonPotency = (player.poisonPotency || 1) + skill.poison;
+            if (skill.multiShot) player.multiShot = (player.multiShot || 0) + skill.multiShot;
+            if (skill.dodge) player.dodgeChance = (player.dodgeChance || 0) + skill.dodge;
+            // Mana skills feed the attack-heat system (more capacity / faster cooldown)
+            if (skill.maxMana) player.heatMaxBonus = (player.heatMaxBonus || 0) + skill.maxMana;
+            if (skill.manaRegen) player.heatDecayBonus = (player.heatDecayBonus || 0) + skill.manaRegen * 0.1;
+            // Ability nodes unlock the advanced ultimate variants in useSkill()
+            if (skill.ability === 'slam') { player.skills.aoe1 = true; player.skills.ult1 = true; }
+            if (skill.ability === 'shadow' || skill.ability === 'meteor') player.skills.ult1 = true;
+
             player.unlockedSkills.push(skillId);
             return true;
         }
@@ -9840,6 +9854,8 @@ const PoolManager = {
         // Fallback to dynamic instantiation if pool is empty
         if (type === 'Bullet') return new Bullet(...args);
         if (type === 'Particle') return new Particle(...args);
+        if (type === 'DamageNumber') return new DamageNumber().init(...args);
+        if (type === 'SlashEffect') return new SlashEffect().init(...args);
         return null;
     },
     release(type, item) {
@@ -10220,7 +10236,7 @@ class Entity {
 
             // Rogue Poison Explosion
             if(this.poisonStacks > 0 && typeof player !== 'undefined' && player && player.type === 'rogue') {
-                const cloudRadius = 60 + this.poisonStacks * 10;
+                const cloudRadius = (60 + this.poisonStacks * 10) * (player.poisonPotency || 1);
                 const cloudSq = cloudRadius * cloudRadius;
                 if(typeof entities !== 'undefined') {
                     for(let i = 0; i < entities.length; i++) {
@@ -12347,7 +12363,7 @@ class Player extends Entity {
             this.orbShieldTimer++;
             if(this.orbShieldTimer >= CONFIG.MAGE_ORB_SHIELD_COOLDOWN && !this.orbShieldReady) { this.orbShieldReady = true; this.orbShieldTimer = 0; addLog(' Escudo Arcano pronto!'); spawnParticles(this.x, this.y, COLORS.CLASS_MAGE, 10, 3); }
         }
-        if(this.attackHeat > 0) this.attackHeat = Math.max(0, this.attackHeat - CONFIG.HEAT_DECAY_RATE);
+        if(this.attackHeat > 0) this.attackHeat = Math.max(0, this.attackHeat - (CONFIG.HEAT_DECAY_RATE + (this.heatDecayBonus || 0)));
         if(this.overheated && this.attackHeat <= CONFIG.HEAT_RESUME_THRESHOLD) this.overheated = false;
         if(this.critZoomTimer > 0) this.critZoomTimer--;
 
@@ -12360,8 +12376,9 @@ class Player extends Entity {
         if(joystickMagSq > deadzoneSq && this.scd <= 0) {
             this.combatTimer = 0; this.shootAnim = 12;
             const cls = CONFIG.PLAYER[this.type];
-            this.attackHeat = Math.min(CONFIG.HEAT_MAX, this.attackHeat + CONFIG.HEAT_PER_SHOT);
-            if(this.attackHeat >= CONFIG.HEAT_MAX && !this.overheated) {
+            const effectiveHeatMax = CONFIG.HEAT_MAX + (this.heatMaxBonus || 0);
+            this.attackHeat = Math.min(effectiveHeatMax, this.attackHeat + CONFIG.HEAT_PER_SHOT);
+            if(this.attackHeat >= effectiveHeatMax && !this.overheated) {
                 this.overheated = true;
                 SND.play(180, 'sawtooth', 0.2, 0.15);
                 DamageNumbers.add(this.x, this.y, 'SUPERAQUECIDO!', 'normal');
@@ -12454,6 +12471,15 @@ class Player extends Entity {
                 }
                 bullets.push(window.PoolManager ? PoolManager.acquire('Bullet', this.x, this.y, sx*bulletSpeed, sy*bulletSpeed, this.color, dmg, true, this.currentWeapon, range) : new Bullet(this.x, this.y, sx*bulletSpeed, sy*bulletSpeed, this.color, dmg, true, this.currentWeapon, range));
                 if(this.type === 'rogue') bullets[bullets.length-1].applyPoison = true;
+                if(this.multiShot) {
+                    const baseAngle = Math.atan2(sy, sx);
+                    for (let ms = 1; ms <= this.multiShot; ms++) {
+                        const spreadAngle = baseAngle + 0.15 * ms * (ms % 2 === 0 ? 1 : -1);
+                        const extraBullet = window.PoolManager ? PoolManager.acquire('Bullet', this.x, this.y, Math.cos(spreadAngle)*bulletSpeed, Math.sin(spreadAngle)*bulletSpeed, this.color, dmg, true, this.currentWeapon, range) : new Bullet(this.x, this.y, Math.cos(spreadAngle)*bulletSpeed, Math.sin(spreadAngle)*bulletSpeed, this.color, dmg, true, this.currentWeapon, range);
+                        if(this.type === 'rogue') extraBullet.applyPoison = true;
+                        bullets.push(extraBullet);
+                    }
+                }
                 this.scd = effectiveFireRate; SND.playShoot(this.type);
             }
         }
@@ -12643,6 +12669,7 @@ class Player extends Entity {
 
     takeDamage(a, m, source=null) {
         if (this.invincibleTimer > 0) return;
+        if (this.dodgeChance && a > 0 && Math.random() < this.dodgeChance) { spawnParticles(this.x, this.y, '#33ff33', 8, 4); DamageNumbers.add(this.x, this.y, 'ESQUIVA!', 'heal'); return; }
         if(this.type === 'mage' && this.orbShieldReady && a > 0) { this.orbShieldReady = false; this.orbShieldTimer = 0; spawnParticles(this.x, this.y, COLORS.CLASS_MAGE, 15, 4); SND.play(440, 'sine', 0.2, 0.2); DamageNumbers.add(this.x, this.y, 'ORB SHIELD!', 'heal'); return; }
         if(this.type === 'rogue' || this.type === 'mage') this.mageComboCount = 0;
         let dmg = a;
@@ -13685,8 +13712,17 @@ const RelicSystem = {
 
     // Espinhos & Mirror: reflect damage back to attacker
     espinhosReflect(victim, attacker, dmg) {
-        if (!victim.relics) return;
         if (!attacker || attacker === victim) return;
+
+        // Skill tree thorn bonus (Static Aura) - independent of relics
+        if (victim.thornPct) {
+            const skillReflected = Math.floor(dmg * victim.thornPct);
+            if (skillReflected > 0 && typeof attacker.takeDamage === 'function') {
+                attacker.takeDamage(skillReflected, map, victim);
+            }
+        }
+
+        if (!victim.relics) return;
 
         if (victim.relics.has('espinhos')) {
             const reflected = Math.floor(dmg * 0.30);
@@ -14016,14 +14052,6 @@ GameSettings.apply();
 
 </script>
     <script>
-// === js/ui/shop-ui.js ===
-// Legacy – shop is now rendered as HTML by UIManager
-function drawShop(ctx) {}
-function handleShopTouch(tx, ty) { return false; }
-
-
-</script>
-    <script>
 // === js/ui/skilltree-ui.js ===
 /**
  * SKILL TREE UI (v2)
@@ -14106,30 +14134,6 @@ const SkillTreeUI = {
 };
 
 window.SkillTreeUI = SkillTreeUI;
-
-
-</script>
-    <script>
-// === js/ui/stats-ui.js ===
-// Legacy – stats is now rendered as HTML by UIManager
-function drawStats(ctx) {}
-function handleStatsTouch(tx, ty) { return false; }
-
-
-</script>
-    <script>
-// === js/ui/achievements-ui.js ===
-// Legacy – achievements is now rendered as HTML by UIManager
-function drawAchievements(ctx) {}
-function handleAchievementsTouch(tx, ty) { return false; }
-
-</script>
-    <script>
-// === js/ui/narrative-ui.js ===
-// Legacy – lore journal is now rendered as HTML by UIManager
-function drawLoreJournal(ctx) {}
-function _drawLoreEntrySmall(ctx, px, py, pw, ph, fs) {}
-function handleLoreTouch(tx, ty) { return false; }
 
 
 </script>
@@ -14571,7 +14575,7 @@ function handleLoreTouch(tx, ty) { return false; }
             }
             if (heatContainer && heatBar) {
                 heatContainer.classList.remove('hidden');
-                const heatPct = (player.attackHeat / CONFIG.HEAT_MAX) * 100;
+                const heatPct = (player.attackHeat / (CONFIG.HEAT_MAX + (player.heatMaxBonus || 0))) * 100;
                 if (cache.heat !== heatPct) {
                     cache.heat = heatPct;
                     heatBar.style.width = heatPct + '%';
