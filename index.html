@@ -10388,8 +10388,6 @@ class Entity {
             fy += this.flinchVy;
             this.flinchTimer--;
         }
-        if(this.frozen > 0 || (!fx && !fy)) return false;
-        const nx = this.x + fx, ny = this.y + fy;
         const r = this.radius * 0.85; // Slightly smaller hitbox for smoother movement
         // Clamp to map boundaries to prevent going outside
         if(m && typeof CONFIG !== 'undefined') {
@@ -10400,7 +10398,6 @@ class Entity {
             if(this.x > mapW - r) this.x = mapW - r;
             if(this.y > mapH - r) this.y = mapH - r;
         }
-        if(this === player && this.mutations && this.mutations.ghost) { this.x = nx; this.y = ny; return true; }
 
         // Check 8 points around circle for collision
         const _isClear = (px, py) => {
@@ -10413,20 +10410,38 @@ class Entity {
             return true;
         };
 
-        // Push out of wall if stuck (tries 12 directions)
+        // Push out of wall if stuck. Tries 8 directions at escalating distances - a fixed
+        // single-radius push isn't enough to clear an entity embedded more than a few
+        // pixels into a wall (radius reaches back into the wall from the pushed position),
+        // which left entities permanently wedged whenever a spawn/knockback placed them
+        // more than shallowly inside geometry.
         const _pushOut = (px, py) => {
-            const dirs = [[-r,0],[r,0],[0,-r],[0,r],[-r,-r],[r,-r],[-r,r],[r,r],[-r*0.5,0],[r*0.5,0],[0,-r*0.5],[0,r*0.5]];
-            for(let i = 0; i < 12; i++) {
-                if(_isClear(px + dirs[i][0], py + dirs[i][1])) return { x: px + dirs[i][0], y: py + dirs[i][1] };
+            const unitDirs = [[-1,0],[1,0],[0,-1],[0,1],[-1,-1],[1,-1],[-1,1],[1,1]];
+            const tile = (CONFIG && CONFIG.TILE_SIZE) || 48;
+            const distances = [r, r*1.5, r*2, tile, tile*1.5, tile*2];
+            for(let d = 0; d < distances.length; d++) {
+                for(let i = 0; i < unitDirs.length; i++) {
+                    const testX = px + unitDirs[i][0] * distances[d], testY = py + unitDirs[i][1] * distances[d];
+                    if(_isClear(testX, testY)) return { x: testX, y: testY };
+                }
             }
             return { x: px, y: py };
         };
 
-        // Safety: if entity is inside wall, push out first
+        // Safety: if entity is embedded in a wall, push it out immediately. This runs
+        // every frame regardless of whether the entity is actively trying to move, so a
+        // stationary/frozen/idle enemy that ends up wedged in a wall (bad spawn point,
+        // knockback, a boss whose hitbox doesn't fit a corridor) doesn't stay stuck there
+        // forever - the previous version only self-corrected while actively moving.
         if(!_isClear(this.x, this.y)) {
             const out = _pushOut(this.x, this.y);
             this.x = out.x; this.y = out.y;
         }
+
+        if(this.frozen > 0 || (!fx && !fy)) return false;
+        const nx = this.x + fx, ny = this.y + fy;
+
+        if(this === player && this.mutations && this.mutations.ghost) { this.x = nx; this.y = ny; return true; }
 
         // Try full diagonal movement
         if(_isClear(nx, ny)) { this.x = nx; this.y = ny; return true; }
