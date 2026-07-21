@@ -3633,6 +3633,11 @@ function _handlePlayerDeath() {
             Statistics.save();
             NarrativeSystem.save();
             StorageManager.set('prestige', { prestigeLevel, totalGamesPlayed });
+            // Stop screen shake immediately - the main update() loop (which decays
+            // shake every frame) halts once gameState leaves 'PLAYING', so any
+            // shake still active at the moment of death would otherwise be
+            // re-randomized by draw() forever (looks like a frozen, trembling screen).
+            shake = 0;
             if (continuesLeft > 0) {
                 if (typeof ScreenEffects !== 'undefined' && ScreenEffects.onPlayerDeath) ScreenEffects.onPlayerDeath();
                 gameState = 'CONTINUE';
@@ -4287,7 +4292,7 @@ function draw() {
         // Apply screen effects (shake, zoom) before drawing world
         ctx.save();
         
-        if (shake > 0) {
+        if (shake > 0 && gameState === 'PLAYING') {
             ctx.translate((Math.random()-0.5)*shake*2, (Math.random()-0.5)*shake*2);
         }
         
