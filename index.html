@@ -127,6 +127,31 @@ body { background: #08080f !important; }
     0%, 100% { box-shadow: 0 0 12px rgba(230,57,70,0.4); }
     50% { box-shadow: 0 0 22px rgba(230,57,70,0.7), 0 0 35px rgba(230,57,70,0.25); }
 }
+.heat-container {
+    width: 100%;
+    height: 7px;
+    margin-top: 3px;
+    background: rgba(0, 0, 0, 0.75);
+    border-radius: 4px;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    position: relative;
+}
+#heat-bar {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, #9966ff, #cc66ff, #ffaa44);
+    border-radius: 3px;
+    transition: width 0.15s linear;
+}
+#heat-bar.overheated {
+    background: linear-gradient(90deg, #ff4400, #ff8800);
+    animation: heatPulse 0.5s ease-in-out infinite;
+}
+@keyframes heatPulse {
+    0%, 100% { opacity: 0.7; }
+    50% { opacity: 1; }
+}
 .hp-label {
     position: absolute;
     inset: 0;
@@ -983,6 +1008,9 @@ body { background: #08080f !important; }
                 <div class="hp-container">
                     <div id="health-bar"></div>
                     <span id="hp-text" class="hp-label">100</span>
+                </div>
+                <div id="heat-container" class="heat-container hidden">
+                    <div id="heat-bar"></div>
                 </div>
             </div>
             <div id="level-badge" class="lv-text" style="font-size:9px;padding:2px 10px;background:rgba(224,182,255,0.1);border-radius:999px;border:1px solid rgba(224,182,255,0.15);">N1</div>
@@ -2098,7 +2126,7 @@ var CONFIG = {
     MAP_SPAWN_MAX_ATTEMPTS: 100,
 
     // Game State
-    MAX_ENEMIES: 6,
+    MAX_ENEMIES: 9,
 
     // Performance Tuning
     PARTICLE_CAP: 60,
@@ -2183,9 +2211,9 @@ var CONFIG = {
     ENEMY_SPEED: 2,
     ENEMY_RADIUS: 12,
     ENEMY_LIGHT_RADIUS: 0,
-    ENEMY_MELEE_DAMAGE: 0.5,
+    ENEMY_MELEE_DAMAGE: 2.5,
     ENEMY_CHASE_RANGE: 400,
-    ENEMY_RANGED_TYPE_CHANCE: 0.3,
+    ENEMY_RANGED_TYPE_CHANCE: 0.45,
     ENEMY_RANGED_MIN_DIST: 150,
     ENEMY_RANGED_SHOOT_INTERVAL: 120,
     ENEMY_RANGED_SHOOT_RANGE: 300,
@@ -2210,7 +2238,7 @@ var CONFIG = {
     SWARM_HP: 10,
     SWARM_SPEED: 3.5,
     SWARM_RADIUS: 6,
-    SWARM_DAMAGE: 0.3,
+    SWARM_DAMAGE: 1.2,
     SWARM_XP: 5,
     SWARM_SPAWN_COUNT: 4, // how many spawn together
     SWARM_COLOR: '#ff66ff',
@@ -2441,6 +2469,13 @@ var CONFIG = {
     MAGE_SPELL_COMBO_REQ: 3,            // shots to trigger combo burst
     MAGE_SPELL_COMBO_AOE_RADIUS: 80,
     MAGE_SPELL_COMBO_DMG_MULT: 0.5,     // combo burst dmg = base * mult
+
+    // Attack Heat (overheat on rapid fire) - applies to all classes
+    HEAT_MAX: 100,
+    HEAT_PER_SHOT: 16,             // ~6 attacks (~0.8-1s of sustained action) to overheat
+    HEAT_DECAY_RATE: 0.5,          // heat lost per frame when not attacking
+    HEAT_RESUME_THRESHOLD: 35,     // must cool to this % before fast attacks resume
+    OVERHEAT_FIRERATE_MULT: 2.5,   // fire/attack interval multiplier while overheated (slower)
 
     // Combat Feel
     HITSTOP_NORMAL: 2,                  // frames frozen on normal kill
@@ -6259,7 +6294,9 @@ const WeaponSystem = {
     getEffectiveFireRate(player) {
         const cls = CONFIG.PLAYER[player.type];
         const baseRate = cls.fireRate;
-        return Math.max(3, Math.floor(baseRate / (player.weaponFireRateMult || 1.0)));
+        let rate = Math.max(3, Math.floor(baseRate / (player.weaponFireRateMult || 1.0)));
+        if (player.overheated) rate = Math.floor(rate * CONFIG.OVERHEAT_FIRERATE_MULT);
+        return rate;
     },
 
     // Get effective bullet range
@@ -12045,6 +12082,8 @@ class Player extends Entity {
         this.orbShieldReady = false;
         this.orbShieldTimer = 0;
         this.mageComboCount = 0;
+        this.attackHeat = 0;
+        this.overheated = false;
         this.invincibleTimer = 0;
         
         this.dodgeCooldown = 0;
@@ -12308,6 +12347,8 @@ class Player extends Entity {
             this.orbShieldTimer++;
             if(this.orbShieldTimer >= CONFIG.MAGE_ORB_SHIELD_COOLDOWN && !this.orbShieldReady) { this.orbShieldReady = true; this.orbShieldTimer = 0; addLog(' Escudo Arcano pronto!'); spawnParticles(this.x, this.y, COLORS.CLASS_MAGE, 10, 3); }
         }
+        if(this.attackHeat > 0) this.attackHeat = Math.max(0, this.attackHeat - CONFIG.HEAT_DECAY_RATE);
+        if(this.overheated && this.attackHeat <= CONFIG.HEAT_RESUME_THRESHOLD) this.overheated = false;
         if(this.critZoomTimer > 0) this.critZoomTimer--;
 
         let sx = Input.right.active ? Input.right.dx : 0, sy = Input.right.active ? Input.right.dy : 0;
@@ -12319,6 +12360,12 @@ class Player extends Entity {
         if(joystickMagSq > deadzoneSq && this.scd <= 0) {
             this.combatTimer = 0; this.shootAnim = 12;
             const cls = CONFIG.PLAYER[this.type];
+            this.attackHeat = Math.min(CONFIG.HEAT_MAX, this.attackHeat + CONFIG.HEAT_PER_SHOT);
+            if(this.attackHeat >= CONFIG.HEAT_MAX && !this.overheated) {
+                this.overheated = true;
+                SND.play(180, 'sawtooth', 0.2, 0.15);
+                DamageNumbers.add(this.x, this.y, 'SUPERAQUECIDO!', 'normal');
+            }
             const invMag = 1 / Math.sqrt(joystickMagSq);
             this.angle = Math.atan2(sy * invMag, sx * invMag);
             this.spriteAngle = this.angle;
@@ -14504,13 +14551,15 @@ function handleLoreTouch(tx, ty) { return false; }
             }
         },
 
-        _hudCache: { hp: null, xp: null, lvl: null },
+        _hudCache: { hp: null, xp: null, lvl: null, heat: null },
         updateHUD() {
             if (!player) return;
             const cache = this._hudCache;
             const hpBar = this._hpBarEl || (this._hpBarEl = document.getElementById('health-bar'));
             const xpBar = this._xpBarEl || (this._xpBarEl = document.getElementById('xp-bar-strip'));
             const lvlInfo = this._lvlInfoEl || (this._lvlInfoEl = document.getElementById('level-badge'));
+            const heatContainer = this._heatContainerEl || (this._heatContainerEl = document.getElementById('heat-container'));
+            const heatBar = this._heatBarEl || (this._heatBarEl = document.getElementById('heat-bar'));
 
             if (hpBar) {
                 const pct = (player.hp / player.maxHp) * 100;
@@ -14518,6 +14567,15 @@ function handleLoreTouch(tx, ty) { return false; }
                     cache.hp = pct;
                     hpBar.style.width = pct + '%';
                     hpBar.classList.toggle('low-health-fill', pct < 30);
+                }
+            }
+            if (heatContainer && heatBar) {
+                heatContainer.classList.remove('hidden');
+                const heatPct = (player.attackHeat / CONFIG.HEAT_MAX) * 100;
+                if (cache.heat !== heatPct) {
+                    cache.heat = heatPct;
+                    heatBar.style.width = heatPct + '%';
+                    heatBar.classList.toggle('overheated', !!player.overheated);
                 }
             }
             if (xpBar) {
