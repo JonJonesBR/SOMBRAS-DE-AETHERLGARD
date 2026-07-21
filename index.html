@@ -2156,6 +2156,10 @@ var CONFIG = {
     ],
     WEATHER_SPAWN_CHANCE: 0.4,
     WEATHER_DURATION: 600,            // frames (~10s)
+    WEATHER_RAIN_LIGHT_MULT: 0.85,    // player light radius multiplier during rain
+    WEATHER_STORM_STRIKE_INTERVAL: 240, // frames between lightning strikes
+    WEATHER_STORM_STRIKE_RANGE: 300,  // radius around player to find a strike target
+    WEATHER_STORM_DAMAGE: 30,
 
     // Random Events
     EVENT_SPAWN_INTERVAL: 1800,       // frames (~30s)
@@ -2361,32 +2365,32 @@ var CONFIG = {
     // Biome: Dungeon (default)
     BIOME_DUNGEON_WALL_COLOR: '#2a2a35',
     BIOME_DUNGEON_FLOOR_COLOR: '#151520',
-    BIOME_DUNGEON_HAZARD_TYPES: ['fire', 'spikes'],
-    BIOME_DUNGEON_HAZARD_WEIGHTS: [0.5, 0.5],
+    BIOME_DUNGEON_HAZARD_TYPES: ['fire', 'spikes', 'ice'],
+    BIOME_DUNGEON_HAZARD_WEIGHTS: [0.45, 0.4, 0.15],
     BIOME_DUNGEON_AMBIENT_COLOR: null,
     BIOME_DUNGEON_AMBIENT_CHANCE: 0,
 
     // Biome: Lava Cave
     BIOME_LAVA_WALL_COLOR: '#2a1510',
     BIOME_LAVA_FLOOR_COLOR: '#1a0a08',
-    BIOME_LAVA_HAZARD_TYPES: ['fire', 'fire', 'spikes'], // more fire
-    BIOME_LAVA_HAZARD_WEIGHTS: [0.66, 0.66, 0.34],
+    BIOME_LAVA_HAZARD_TYPES: ['fire', 'fire', 'spikes', 'poison'], // more fire
+    BIOME_LAVA_HAZARD_WEIGHTS: [0.66, 0.66, 0.34, 0.2],
     BIOME_LAVA_AMBIENT_COLOR: '#ff4400',
     BIOME_LAVA_AMBIENT_CHANCE: 0.03,
 
     // Biome: Crypt
     BIOME_CRYPT_WALL_COLOR: '#1a1a2a',
     BIOME_CRYPT_FLOOR_COLOR: '#0a0a18',
-    BIOME_CRYPT_HAZARD_TYPES: ['spikes', 'spikes', 'fire'], // more spikes
-    BIOME_CRYPT_HAZARD_WEIGHTS: [0.66, 0.66, 0.34],
+    BIOME_CRYPT_HAZARD_TYPES: ['spikes', 'spikes', 'fire', 'ice'], // more spikes
+    BIOME_CRYPT_HAZARD_WEIGHTS: [0.66, 0.66, 0.34, 0.2],
     BIOME_CRYPT_AMBIENT_COLOR: '#6666aa',
     BIOME_CRYPT_AMBIENT_CHANCE: 0.02,
 
     // Biome: Forest
     BIOME_FOREST_WALL_COLOR: '#0a1a0a',
     BIOME_FOREST_FLOOR_COLOR: '#081208',
-    BIOME_FOREST_HAZARD_TYPES: ['spikes', 'fire'],
-    BIOME_FOREST_HAZARD_WEIGHTS: [0.6, 0.4],
+    BIOME_FOREST_HAZARD_TYPES: ['spikes', 'fire', 'poison'],
+    BIOME_FOREST_HAZARD_WEIGHTS: [0.6, 0.4, 0.25],
     BIOME_FOREST_AMBIENT_COLOR: '#33ff33',
     BIOME_FOREST_AMBIENT_CHANCE: 0.025,
 
@@ -2621,6 +2625,7 @@ var CONFIG = {
     HAZARD_SPIKE_RADIUS: 30,
     HAZARD_FIRE_DAMAGE: 2,
     HAZARD_SPIKE_DAMAGE: 1,
+    HAZARD_POISON_DAMAGE: 3,
     HAZARD_DURATION: 300,             // frames (~5s)
     HAZARD_ALPHA_BASE: 0.6,
 
@@ -3624,6 +3629,58 @@ function _updateWorldSim() {
 
     if(currentEvent) { if(!currentEvent.update()) { currentEvent = null; addLog("Evento terminado!"); } }
 
+    _updateWeather();
+}
+
+function _updateWeather() {
+    if (weather) {
+        weatherTimer--;
+        if (weatherTimer <= 0) { weather = null; return; }
+        if (weather.type === 'storm' && gameTime % CONFIG.WEATHER_STORM_STRIKE_INTERVAL === 0 && player) {
+            let nearest = null, nearestDistSq = CONFIG.WEATHER_STORM_STRIKE_RANGE * CONFIG.WEATHER_STORM_STRIKE_RANGE;
+            for (let i = 0; i < entities.length; i++) {
+                const e = entities[i];
+                if (e === player || !e.alive) continue;
+                const dx = e.x - player.x, dy = e.y - player.y;
+                const dSq = dx*dx + dy*dy;
+                if (dSq < nearestDistSq) { nearestDistSq = dSq; nearest = e; }
+            }
+            if (nearest) {
+                nearest.takeDamage(CONFIG.WEATHER_STORM_DAMAGE, map, player);
+                spawnParticles(nearest.x, nearest.y, '#ffffaa', 20, 8);
+                shake = 12;
+                if (typeof ScreenEffects !== 'undefined') ScreenEffects.triggerFlash(0.3, '#ffffff', 8);
+                SND.play(200, 'square', 0.15, 0.3);
+            }
+        }
+    } else if (gameTime % CONFIG.WEATHER_SPAWN_INTERVAL === 0 && Math.random() < CONFIG.WEATHER_SPAWN_CHANCE) {
+        const type = Math.random() < 0.6 ? 'rain' : 'storm';
+        weather = { type };
+        weatherTimer = CONFIG.WEATHER_DURATION;
+        if (window.SND && SND.playWeatherChange) SND.playWeatherChange(type);
+        addLog(type === 'rain' ? ' Comecou a chover...' : ' Uma tempestade se aproxima!');
+    }
+}
+
+function _drawWeatherOverlay(ctx) {
+    if (!weather) return;
+    ctx.save();
+    if (weather.type === 'rain') {
+        ctx.strokeStyle = 'rgba(150,180,255,0.25)';
+        ctx.lineWidth = 1;
+        for (let i = 0; i < 40; i++) {
+            const rx = (i * 37 + gameTime * 4) % (width + 40) - 20;
+            const ry = (i * 53 + gameTime * 9) % (height + 40) - 20;
+            ctx.beginPath();
+            ctx.moveTo(rx, ry);
+            ctx.lineTo(rx - 4, ry + 14);
+            ctx.stroke();
+        }
+    } else if (weather.type === 'storm') {
+        ctx.fillStyle = 'rgba(10,10,20,0.25)';
+        ctx.fillRect(0, 0, width, height);
+    }
+    ctx.restore();
 }
 
 function _handlePlayerDeath() {
@@ -3891,14 +3948,17 @@ function _updateEnemySpawning() {
         if (isBoss) {
             bossActive = true;
             const boss = new Boss(eSpawn.x, eSpawn.y);
+            const BOSS_ARCHETYPES = ['brutamontes', 'arcano', 'convocador'];
             if (gameMode === 'dungeon') {
                 const depth = Math.max(1, 10 - (dungeonLevel - 1));
                 const nameIdx = Math.min(dungeonLevel - 1, CONFIG.FLOOR_BOSS_NAMES.length - 1);
                 boss.name = CONFIG.FLOOR_BOSS_NAMES[nameIdx];
+                boss.applyArchetype(BOSS_ARCHETYPES[nameIdx % BOSS_ARCHETYPES.length]);
                 const _preBossLines = typeof BOSS_PRE_COMBAT_LINES !== 'undefined' ? BOSS_PRE_COMBAT_LINES : [];
                 if (_preBossLines.length > 0) addLog(_preBossLines[Math.floor(Math.random() * _preBossLines.length)]);
                 addLog('O guardiao do Piso B' + depth + ' bloqueia sua passagem!');
             } else {
+                boss.applyArchetype(BOSS_ARCHETYPES[Math.floor(Math.random() * BOSS_ARCHETYPES.length)]);
                 addLog('CHEFE APROXIMANDO: ' + boss.name + '!');
             }
             entities.push(boss); SND.playBoss(); SND.startBossMusic(); shake = 20; ScreenEffects.onBossSpawn();
@@ -4163,7 +4223,8 @@ function _drawLightingLayer() {
         };
         if (player) {
             const flicker = 0.92 + Math.sin(gameTime * 0.08) * 0.05 + Math.sin(gameTime * 0.13) * 0.03;
-            dL(player.x, player.y, player.lr, flicker);
+            const weatherLrMult = (weather && weather.type === 'rain') ? CONFIG.WEATHER_RAIN_LIGHT_MULT : 1;
+            dL(player.x, player.y, player.lr * weatherLrMult, flicker);
         }
         const margin = 300;
         for (let i = 0; i < entities.length; i++) {
@@ -4314,7 +4375,9 @@ function draw() {
         }
         
         ctx.restore();
-        
+
+        _drawWeatherOverlay(ctx);
+
         // Draw screen-space HUD (minimap, joystick, buttons)
         _drawScreenSpaceHUD();
         
@@ -9665,18 +9728,22 @@ class Pickup {
 class Hazard {
     constructor(x,y,type) {
         this.x=x; this.y=y; this.type=type; this.alive=true; this.timer=180; this.radius=20;
-        if(type === 'fire') { this.color='#ff6600'; this.damage=CONFIG.HAZARD_FIRE_DAMAGE; this.size=25; }
-        else if(type === 'spikes') { this.color='#888899'; this.damage=CONFIG.HAZARD_SPIKE_DAMAGE; this.size=18; this.radius=20; }
-        else { this.color='#ff6600'; this.damage=5; this.size=25; }
+        if(type === 'fire') { this.color='#ff6600'; this.damage=CONFIG.HAZARD_FIRE_DAMAGE; this.size=25; this.tickInterval=30; }
+        else if(type === 'spikes') { this.color='#888899'; this.damage=CONFIG.HAZARD_SPIKE_DAMAGE; this.size=18; this.radius=20; this.tickInterval=30; }
+        else if(type === 'ice') { this.color='#88ddff'; this.damage=0; this.size=22; this.tickInterval=0; }
+        else if(type === 'poison') { this.color='#66cc33'; this.damage=CONFIG.HAZARD_POISON_DAMAGE; this.size=28; this.tickInterval=45; }
+        else { this.color='#ff6600'; this.damage=5; this.size=25; this.tickInterval=30; }
     }
     update(p, m) {
         this.timer--;
         if(this.timer <= 0) { this.alive = false; return; }
-        if(p && this.type === 'fire') {
-            const dx = p.x-this.x, dy = p.y-this.y;
-            if(dx*dx + dy*dy < this.size * this.size) {
-                if(gameTime % 30 === 0) p.takeDamage(this.damage, m, this);
-            }
+        if(!p) return;
+        const dx = p.x-this.x, dy = p.y-this.y;
+        const inRange = dx*dx + dy*dy < this.size * this.size;
+        if(this.type === 'ice') {
+            if(inRange) p._hazardSlowTimer = 10;
+        } else if(this.damage > 0 && inRange) {
+            if(gameTime % this.tickInterval === 0) p.takeDamage(this.damage, m, this);
         }
     }
     draw(ctx, cx, cy) {
@@ -9691,6 +9758,24 @@ class Hazard {
             ctx.fillStyle = '#ffaa00';
             ctx.beginPath();
             ctx.arc(px, py, this.size*0.4, 0, Math.PI*2);
+            ctx.fill();
+            ctx.globalAlpha = 1;
+        } else if(this.type === 'ice') {
+            ctx.globalAlpha = 0.6 + Math.sin(gameTime*0.08)*0.15;
+            ctx.fillStyle = this.color;
+            ctx.beginPath();
+            ctx.moveTo(px, py - this.size/2);
+            ctx.lineTo(px + this.size/2, py + this.size/2);
+            ctx.lineTo(px - this.size/2, py + this.size/2);
+            ctx.closePath();
+            ctx.fill();
+            ctx.globalAlpha = 1;
+        } else if(this.type === 'poison') {
+            const puff = Math.sin(gameTime*0.15)*0.1+0.9;
+            ctx.globalAlpha = 0.4 + Math.sin(gameTime*0.12)*0.15;
+            ctx.fillStyle = this.color;
+            ctx.beginPath();
+            ctx.arc(px, py, this.size * puff, 0, Math.PI*2);
             ctx.fill();
             ctx.globalAlpha = 1;
         } else {
@@ -11029,6 +11114,27 @@ class Boss extends Enemy {
         this.hazardTimer = 0;
         this.arenaHazards = [];
         this.summonedMinions = [];
+        this.archetype = null;
+        this._archDamageMult = 1.0;
+    }
+
+    // Give this boss a combat identity (color, stat lean, ability bias) beyond a cosmetic name
+    applyArchetype(name) {
+        this.archetype = name;
+        if (name === 'brutamontes') {
+            this.color = '#ff3333';
+            this.maxHp = Math.floor(this.maxHp * 1.2);
+            this.hp = this.maxHp;
+            this._archDamageMult = 1.15;
+        } else if (name === 'arcano') {
+            this.color = '#9966ff';
+            this.maxHp = Math.floor(this.maxHp * 0.9);
+            this.hp = this.maxHp;
+            this._archDamageMult = 1.0;
+        } else if (name === 'convocador') {
+            this.color = '#33ff88';
+            this._archDamageMult = 1.0;
+        }
     }
 
     // Smart steering: tries direct path, then rotated angles to avoid walls
@@ -11196,7 +11302,7 @@ class Boss extends Enemy {
             const chaseRangeSq = CONFIG.ENEMY_CHASE_RANGE * CONFIG.ENEMY_CHASE_RANGE;
             if(dSq > 0 && dSq < chaseRangeSq) {
                 this._steer(p.x, p.y, m);
-                const dmgMult = this.phase >= 3 ? CONFIG.BOSS_PHASE_3_DAMAGE_MULT : (this.phase === 2 ? CONFIG.BOSS_PHASE_2_DAMAGE_MULT : 1);
+                const dmgMult = (this.phase >= 3 ? CONFIG.BOSS_PHASE_3_DAMAGE_MULT : (this.phase === 2 ? CONFIG.BOSS_PHASE_2_DAMAGE_MULT : 1)) * (this._archDamageMult || 1);
                 const contactSq = (p.radius + this.radius) * (p.radius + this.radius);
                 if(dSq < contactSq) p.takeDamage(CONFIG.ENEMY_MELEE_DAMAGE * dmgMult, m);
             }
@@ -11216,6 +11322,13 @@ class Boss extends Enemy {
         if(this.phase >= 3) { abilities.push('spiralBurst', 'charge', 'charge'); }
         if(this.phase >= 4) { abilities.push('teleport', 'spiralBurst', 'guidedProjectile', 'guidedProjectile'); }
         if(this.phase >= 5) { abilities.push('teleport', 'teleport', 'spiralBurst', 'guidedProjectile'); }
+
+        // Archetype bias: stack extra copies of favored moves so they come up more often,
+        // without touching any of the existing phase-based move implementations.
+        if(this.archetype === 'arcano' && this.phase >= 2 && this.phase < 4) { abilities.push('guidedProjectile', 'guidedProjectile'); }
+        if(this.archetype === 'brutamontes' && this.phase >= 2) { abilities.push('charge', 'charge', 'groundPound', 'groundPound'); }
+        if(this.archetype === 'arcano' && this.phase >= 3) { abilities.push('spiralBurst', 'spiralBurst', 'teleport'); }
+        if(this.archetype === 'convocador') { abilities.push('targetedBarrage', 'targetedBarrage', 'projectileBurst'); }
 
         const ability = abilities[Math.floor(Math.random() * abilities.length)];
         const sp = CONFIG.BOSS_ABILITY_PROJECTILE_SPEED;
@@ -11318,7 +11431,8 @@ class Boss extends Enemy {
     }
 
     trySummonMinions(m) {
-        if(Math.random() < CONFIG.BOSS_ABILITY_SUMMON_CHANCE) {
+        const summonChance = this.archetype === 'convocador' ? CONFIG.BOSS_ABILITY_SUMMON_CHANCE * 2 : CONFIG.BOSS_ABILITY_SUMMON_CHANCE;
+        if(Math.random() < summonChance) {
             for(let i = 0; i < CONFIG.BOSS_ABILITY_SUMMON_COUNT; i++) {
                 const angle = Math.random() * Math.PI * 2;
                 const dist = 80 + Math.random() * 40;
@@ -12137,6 +12251,7 @@ class Player extends Entity {
         this.mageComboCount = 0;
         this.attackHeat = 0;
         this.overheated = false;
+        this._hazardSlowTimer = 0;
         this.invincibleTimer = 0;
         
         this.dodgeCooldown = 0;
@@ -12378,6 +12493,7 @@ class Player extends Entity {
         if(this.skills.speed2) currentSpeed *= 1.2;
         else if(this.skills.speed1) currentSpeed *= 1.1;
         if(typeof WeaponSystem !== 'undefined' && WeaponSystem.getSpeedMult) currentSpeed *= WeaponSystem.getSpeedMult(this);
+        if(this._hazardSlowTimer > 0) { currentSpeed *= 0.6; this._hazardSlowTimer--; }
 
         if (dx !== 0 || dy !== 0) {
             this.move(dx * currentSpeed, dy * currentSpeed, m);
@@ -14688,6 +14804,7 @@ window.GameBootstrap = {
         gameTime = 0; bossActive = false; dungeonLevel = 1; currentEvent = null; eventTimer = 0;
         dungeonKills = 0; dungeonKillTarget = 18; dungeonPortal = null;
         continuesLeft = 3; _continueActive = false; minimapExpanded = false;
+        weather = null; weatherTimer = 0;
         
         if (window.NPCSystem) NPCSystem.reset();
         this._spawnMapChests();
