@@ -1139,8 +1139,8 @@ body { background: #08080f !important; }
     <div id="settings-panel" class="hidden" style="position:fixed;inset:0;z-index:2000;align-items:center;justify-content:center;background:rgba(0,0,0,0.6);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);pointer-events:auto"></div>
 
     <!-- GAME OVER SCREEN -->
-    <div id="game-over-screen" class="hidden fixed inset-0 z-[2000] flex flex-col items-center justify-center p-6" style="pointer-events:auto;background:rgba(6,2,8,0.88);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);animation:overlayIn 0.3s ease;">
-        <div class="glass-panel w-full max-w-sm p-6 flex flex-col items-center gap-4" style="background:rgba(30,18,30,0.98);border:1.5px solid rgba(255,60,60,0.4);border-radius:28px;box-shadow:0 10px 50px rgba(0,0,0,0.5),0 0 40px rgba(255,0,0,0.1);">
+    <div id="game-over-screen" class="hidden" style="position:fixed;inset:0;z-index:2000;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;pointer-events:auto;background:rgba(6,2,8,0.88);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);animation:overlayIn 0.3s ease;">
+        <div class="glass-panel" style="width:100%;max-width:24rem;max-height:80vh;overflow-y:auto;padding:24px;display:flex;flex-direction:column;align-items:center;gap:16px;background:rgba(30,18,30,0.98);border:1.5px solid rgba(255,60,60,0.4);border-radius:28px;box-shadow:0 10px 50px rgba(0,0,0,0.5),0 0 40px rgba(255,0,0,0.1);">
             <div class="text-center">
                 <h1 class="text-4xl font-bold epic-glow-text" style="color:#ff4444;text-shadow:0 0 25px #ff4444,0 0 50px #ff0000,0 0 80px rgba(255,0,0,0.3);animation:goTitlePulse 2s ease-in-out infinite;">VOCÊ MORREU</h1>
                 <div class="mt-2 text-[10px] uppercase tracking-[0.2em]" style="color:rgba(255,60,60,0.4);">O Abismo Reivindica Mais Um</div>
@@ -1153,11 +1153,11 @@ body { background: #08080f !important; }
     </div>
 
     <!-- CONTINUE SCREEN -->
-    <div id="continue-screen" class="hidden fixed inset-0 z-[2000] flex flex-col items-center justify-center p-6" style="pointer-events:auto;background:rgba(6,2,8,0.88);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);animation:overlayIn 0.3s ease;">
-        <div class="glass-panel w-full max-w-sm p-8 flex flex-col items-center gap-5" style="background:rgba(20,22,32,0.98);border:1.5px solid rgba(60,227,106,0.4);border-radius:28px;">
+    <div id="continue-screen" class="hidden" style="position:fixed;inset:0;z-index:2000;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;pointer-events:auto;background:rgba(6,2,8,0.88);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);animation:overlayIn 0.3s ease;">
+        <div class="glass-panel" style="width:100%;max-width:24rem;padding:32px;display:flex;flex-direction:column;align-items:center;gap:20px;background:rgba(20,22,32,0.98);border:1.5px solid rgba(60,227,106,0.4);border-radius:28px;">
             <h2 id="continue-title" class="text-3xl font-bold epic-glow-text" style="color:#3ce36a;text-shadow:0 0 25px rgba(60,227,106,0.5),0 0 50px rgba(60,227,106,0.2);">CONTINUAR?</h2>
-            <div class="relative w-24 h-24 flex items-center justify-center">
-                <svg class="absolute inset-0 w-full h-full" viewBox="0 0 100 100">
+            <div style="position:relative;width:6rem;height:6rem;display:flex;align-items:center;justify-content:center;">
+                <svg style="position:absolute;inset:0;width:100%;height:100%;" viewBox="0 0 100 100">
                     <circle cx="50" cy="50" r="42" fill="none" stroke="rgba(60,227,106,0.15)" stroke-width="6"/>
                     <circle id="continue-ring" cx="50" cy="50" r="42" fill="none" stroke="#3ce36a" stroke-width="6" stroke-linecap="round" stroke-dasharray="264" stroke-dashoffset="0" transform="rotate(-90 50 50)" style="transition:stroke-dashoffset 1s linear;"/>
                 </svg>
@@ -1172,8 +1172,8 @@ body { background: #08080f !important; }
     </div>
 
     <!-- WIN SCREEN -->
-    <div id="win-screen" class="hidden fixed inset-0 z-[2000] flex flex-col items-center justify-center p-6" style="pointer-events:auto;background:rgba(6,2,8,0.88);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);animation:overlayIn 0.3s ease;">
-        <div class="glass-panel w-full max-w-sm p-6 flex flex-col items-center gap-4" style="background:rgba(20,22,32,0.98);border:1.5px solid rgba(60,227,106,0.4);border-radius:28px;">
+    <div id="win-screen" class="hidden" style="position:fixed;inset:0;z-index:2000;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;pointer-events:auto;background:rgba(6,2,8,0.88);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);animation:overlayIn 0.3s ease;">
+        <div class="glass-panel" style="width:100%;max-width:24rem;padding:24px;display:flex;flex-direction:column;align-items:center;gap:16px;background:rgba(20,22,32,0.98);border:1.5px solid rgba(60,227,106,0.4);border-radius:28px;">
             <h1 class="text-3xl font-bold epic-glow-text" style="color:#3ce36a;text-shadow:0 0 25px rgba(60,227,106,0.5),0 0 50px rgba(60,227,106,0.2);">SUPERFÍCIE ALCANÇADA!</h1>
             <div id="win-stars" class="text-4xl"></div>
             <div id="win-stats" class="text-sm" style="color:rgba(255,255,255,0.6);"></div>
@@ -3684,27 +3684,29 @@ function _drawWeatherOverlay(ctx) {
 }
 
 function _handlePlayerDeath() {
-    if (player && player.hp <= 0 && !_continueActive) {
+    console.log('[DEATH_CHECK] called: alive=' + (player ? player.alive : 'no-player') + ' hp=' + (player ? player.hp : 'N/A') + ' continueActive=' + _continueActive + ' continuesLeft=' + continuesLeft + ' gameState=' + gameState);
+    if (player && (!player.alive || player.hp <= 0) && !_continueActive) {
+        // Critical game-state changes MUST happen outside Debug.safe() so that
+        // a failure in Statistics/NarrativeSystem/StorageManager does not
+        // silently prevent the game-over/continue flow from executing.
+        shake = 0;
+        if (continuesLeft > 0) {
+            if (typeof ScreenEffects !== 'undefined' && ScreenEffects.onPlayerDeath) ScreenEffects.onPlayerDeath();
+            gameState = 'CONTINUE';
+            _showContinueScreen();
+        } else {
+            if (typeof ScreenEffects !== 'undefined' && ScreenEffects.onPlayerDeath) ScreenEffects.onPlayerDeath();
+            gameState = 'GAME_OVER'; uiG.classList.remove('hidden'); uiG.classList.add('fade-in');
+            _populateGameOverUI();
+        }
+        // Save operations are non-critical; wrap them so a save failure
+        // never blocks the game-over transition.
         Debug.safe(() => {
             Debug.info(`Player died: Level ${player.lvl}, ${player.kills} kills, Dungeon ${dungeonLevel}`);
             Statistics.save();
             NarrativeSystem.save();
             StorageManager.set('prestige', { prestigeLevel, totalGamesPlayed });
-            // Stop screen shake immediately - the main update() loop (which decays
-            // shake every frame) halts once gameState leaves 'PLAYING', so any
-            // shake still active at the moment of death would otherwise be
-            // re-randomized by draw() forever (looks like a frozen, trembling screen).
-            shake = 0;
-            if (continuesLeft > 0) {
-                if (typeof ScreenEffects !== 'undefined' && ScreenEffects.onPlayerDeath) ScreenEffects.onPlayerDeath();
-                gameState = 'CONTINUE';
-                _showContinueScreen();
-            } else {
-                if (typeof ScreenEffects !== 'undefined' && ScreenEffects.onPlayerDeath) ScreenEffects.onPlayerDeath();
-                gameState = 'GAME_OVER'; uiG.classList.remove('hidden'); uiG.classList.add('fade-in');
-                _populateGameOverUI();
-            }
-        }, 'playerDeath');
+        }, 'playerDeathSave');
     }
 }
 
@@ -4040,17 +4042,18 @@ function _updateCameraAndHUD() {
 
 function update() {
     if (gameState !== 'PLAYING') return;
+    Debug.safe(() => _handlePlayerDeath(), 'handlePlayerDeath');
+    if (gameState !== 'PLAYING') return;
     // --- Phase 4: Hitstop  freeze world for N frames on kill ---
     // Brief hitstop for punchy combat (2 frames)
     if (hitstopFrames > 0) { hitstopFrames--; return; }
-    _updateSystems();
+    Debug.safe(() => _updateSystems(), 'updateSystems');
     if (_anyPanelOpen()) return;
-    _updateWorldSim();
-    _handlePlayerDeath();
-    Debug.time('entities', _updateEntitySimulation);
-    _updatePortalAndFloor();
-    _updateEnemySpawning();
-    _updateCameraAndHUD();
+    Debug.safe(() => _updateWorldSim(), 'updateWorldSim');
+    Debug.safe(() => Debug.time('entities', _updateEntitySimulation), 'updateEntitySimulation');
+    Debug.safe(() => _updatePortalAndFloor(), 'updatePortalAndFloor');
+    Debug.safe(() => _updateEnemySpawning(), 'updateEnemySpawning');
+    Debug.safe(() => _updateCameraAndHUD(), 'updateCameraAndHUD');
 }
 
 // ============================================================
@@ -11582,7 +11585,7 @@ class Boss extends Enemy {
         // --- Phase 4: Thorn aura in phase 3+  reflect 10% damage to attacker ---
         if(this.alive && this.phase >= 3 && source === player && a > 0) {
             const reflected = Math.max(1, Math.floor(a * CONFIG.BOSS_THORN_REFLECT_RATIO));
-            player.hp = Math.max(1, player.hp - reflected);
+            player.hp -= reflected;
             DamageNumbers.add(player.x, player.y, reflected, 'normal');
             spawnParticles(this.x, this.y, '#ff4400', 3, 2);
         }
@@ -12481,6 +12484,7 @@ class Player extends Entity {
     }
 
     update(m) {
+        if (!this.alive) return;
         // Update cloak points with follow physics (lag behind)
         if (this.cloakPoints && this.cloakPoints.length > 0) {
             let prev = {x: this.x, y: this.y};
