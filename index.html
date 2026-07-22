@@ -3684,7 +3684,6 @@ function _drawWeatherOverlay(ctx) {
 }
 
 function _handlePlayerDeath() {
-    console.log('[DEATH_CHECK] called: alive=' + (player ? player.alive : 'no-player') + ' hp=' + (player ? player.hp : 'N/A') + ' continueActive=' + _continueActive + ' continuesLeft=' + continuesLeft + ' gameState=' + gameState);
     if (player && (!player.alive || player.hp <= 0) && !_continueActive) {
         // Critical game-state changes MUST happen outside Debug.safe() so that
         // a failure in Statistics/NarrativeSystem/StorageManager does not
