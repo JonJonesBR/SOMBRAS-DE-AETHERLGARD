@@ -1124,12 +1124,14 @@ body { background: #08080f !important; }
         </div>
 
         <!-- PAUSE OVERLAY -->
-        <div id="pause-overlay" class="hidden" style="position:absolute;inset:0;z-index:300;background:rgba(6,2,12,0.85);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:auto;">
-            <div style="font-size:1.6rem;font-weight:900;color:#e0b6ff;text-shadow:0 0 15px rgba(224,182,255,0.3);margin-bottom:4px;">PAUSADO</div>
-            <div style="font-size:0.8rem;color:rgba(255,255,255,0.35);margin-bottom:28px;">Toque para continuar</div>
-            <div style="display:flex;gap:10px;">
-                <button id="pause-resume" style="padding:12px 28px;border-radius:12px;font-size:12px;font-weight:700;background:rgba(60,227,106,0.15);border:1.5px solid rgba(60,227,106,0.35);color:#5cff82;cursor:pointer;touch-action:manipulation;">Continuar</button>
-                <button id="pause-quit" style="padding:12px 28px;border-radius:12px;font-size:12px;font-weight:700;background:rgba(255,68,68,0.15);border:1.5px solid rgba(255,68,68,0.25);color:#ff6666;cursor:pointer;touch-action:manipulation;">Sair</button>
+        <div id="pause-overlay" class="hidden" style="position:absolute;inset:0;z-index:300;background:rgba(6,2,12,0.85);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:auto;padding:24px;">
+            <div class="glass-panel" style="width:100%;max-width:20rem;padding:32px;display:flex;flex-direction:column;align-items:center;gap:6px;">
+                <div style="font-size:1.6rem;font-weight:900;color:#e0b6ff;text-shadow:0 0 20px rgba(224,182,255,0.5),0 0 40px rgba(224,182,255,0.2);">PAUSADO</div>
+                <div style="font-size:0.75rem;color:rgba(255,255,255,0.35);text-transform:uppercase;letter-spacing:0.15em;margin-bottom:22px;">Toque para continuar</div>
+                <div style="display:flex;flex-direction:column;gap:10px;width:100%;">
+                    <button id="pause-resume" style="width:100%;padding:16px 0;border-radius:12px;color:#fff;font-weight:700;font-size:14px;text-transform:uppercase;letter-spacing:0.05em;background:linear-gradient(135deg,#008836,#3ce36a);border:1px solid rgba(60,227,106,0.3);box-shadow:0 4px 20px rgba(0,136,54,0.3);transition:all 0.3s;text-shadow:0 1px 4px rgba(0,0,0,0.4);cursor:pointer;touch-action:manipulation;">Continuar</button>
+                    <button id="pause-quit" style="width:100%;padding:16px 0;border-radius:12px;color:#fff;font-weight:700;font-size:14px;text-transform:uppercase;letter-spacing:0.05em;background:linear-gradient(135deg,#b8000f,#e84525);border:1px solid rgba(255,100,80,0.3);box-shadow:0 4px 20px rgba(200,0,15,0.3);transition:all 0.3s;text-shadow:0 1px 4px rgba(0,0,0,0.4);cursor:pointer;touch-action:manipulation;">Sair</button>
+                </div>
             </div>
         </div>
 
@@ -1153,7 +1155,7 @@ body { background: #08080f !important; }
             <div id="game-over-stats" class="w-full text-sm" style="color:rgba(255,255,255,0.6);"></div>
             <div id="go-tip" class="text-xs hidden text-center px-4" style="color:#ffcc00;"></div>
             <div id="go-lore-teaser" class="text-xs hidden text-center px-4" style="color:#e0b6ff;"></div>
-            <button id="restart-btn" class="w-full py-4 rounded-xl text-white font-bold text-sm uppercase tracking-wider" style="background:linear-gradient(135deg,#b8000f,#e84525);border:1px solid rgba(255,100,80,0.3);box-shadow:0 4px 20px rgba(200,0,15,0.3);transition:all 0.3s;text-shadow:0 1px 4px rgba(0,0,0,0.4);">TENTAR NOVAMENTE</button>
+            <button id="restart-btn" style="width:100%;padding:16px 0;border-radius:12px;color:#fff;font-weight:700;font-size:14px;text-transform:uppercase;letter-spacing:0.05em;background:linear-gradient(135deg,#b8000f,#e84525);border:1px solid rgba(255,100,80,0.3);box-shadow:0 4px 20px rgba(200,0,15,0.3);transition:all 0.3s;text-shadow:0 1px 4px rgba(0,0,0,0.4);cursor:pointer;">TENTAR NOVAMENTE</button>
         </div>
     </div>
 
@@ -1169,10 +1171,10 @@ body { background: #08080f !important; }
                 <div class="text-5xl font-bold text-white" id="continue-countdown" style="text-shadow:0 0 20px rgba(255,255,255,0.3);">10</div>
             </div>
             <p class="text-sm" style="color:rgba(255,255,255,0.5);">Continue em <span id="continue-countdown-2" class="font-bold" style="color:#3ce36a;">10</span>s</p>
-            <button id="continue-btn" class="w-full py-4 rounded-xl text-white font-bold text-sm uppercase tracking-wider" style="background:linear-gradient(135deg,#008836,#3ce36a);border:1px solid rgba(60,227,106,0.3);box-shadow:0 4px 20px rgba(0,136,54,0.3);transition:all 0.3s;text-shadow:0 1px 4px rgba(0,0,0,0.4);" onclick="if(window._doContinue) _doContinue();">
+            <button id="continue-btn" style="width:100%;padding:16px 0;border-radius:12px;color:#fff;font-weight:700;font-size:14px;text-transform:uppercase;letter-spacing:0.05em;background:linear-gradient(135deg,#008836,#3ce36a);border:1px solid rgba(60,227,106,0.3);box-shadow:0 4px 20px rgba(0,136,54,0.3);transition:all 0.3s;text-shadow:0 1px 4px rgba(0,0,0,0.4);cursor:pointer;" onclick="if(window._doContinue) _doContinue();">
                 Continuar <span id="continues-left" style="font-size:11px;margin-left:6px;opacity:0.7;">(3 restantes)</span>
             </button>
-            <button class="w-full py-3 rounded-xl text-sm font-bold border" onclick="if(window._cancelContinue) _cancelContinue();" style="color:rgba(255,255,255,0.5);background:rgba(40,30,55,0.6);border-color:rgba(255,255,255,0.1);transition:all 0.2s;">DESISTIR</button>
+            <button onclick="if(window._cancelContinue) _cancelContinue();" style="width:100%;padding:12px 0;border-radius:12px;font-size:13px;font-weight:700;border:1px solid rgba(255,255,255,0.1);color:rgba(255,255,255,0.5);background:rgba(40,30,55,0.6);transition:all 0.2s;cursor:pointer;">DESISTIR</button>
         </div>
     </div>
 
@@ -1182,7 +1184,7 @@ body { background: #08080f !important; }
             <h1 class="text-3xl font-bold epic-glow-text" style="color:#3ce36a;text-shadow:0 0 25px rgba(60,227,106,0.5),0 0 50px rgba(60,227,106,0.2);">SUPERFÍCIE ALCANÇADA!</h1>
             <div id="win-stars" class="text-4xl"></div>
             <div id="win-stats" class="text-sm" style="color:rgba(255,255,255,0.6);"></div>
-            <button class="w-full py-4 rounded-xl text-white font-bold text-sm uppercase tracking-wider" style="background:linear-gradient(135deg,#008836,#3ce36a);border:1px solid rgba(60,227,106,0.3);box-shadow:0 4px 20px rgba(0,136,54,0.3);transition:all 0.3s;text-shadow:0 1px 4px rgba(0,0,0,0.4);" onclick="location.reload()">JOGAR NOVAMENTE</button>
+            <button style="width:100%;padding:16px 0;border-radius:12px;color:#fff;font-weight:700;font-size:14px;text-transform:uppercase;letter-spacing:0.05em;background:linear-gradient(135deg,#008836,#3ce36a);border:1px solid rgba(60,227,106,0.3);box-shadow:0 4px 20px rgba(0,136,54,0.3);transition:all 0.3s;text-shadow:0 1px 4px rgba(0,0,0,0.4);cursor:pointer;" onclick="location.reload()">JOGAR NOVAMENTE</button>
         </div>
     </div>
 
@@ -14827,34 +14829,34 @@ window.SkillTreeUI = SkillTreeUI;
                     <div>
                         <h3 style="font-size:10px;text-transform:uppercase;letter-spacing:0.1em;color:${COLORS.TEXT_MUTED};font-weight:bold;margin-bottom:8px">Controles</h3>
                         <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
-                            <button class="${btn(s.controlType === 'touch')}" onclick="UIManager.setSetting('controlType', 'touch')">TOUCH</button>
-                            <button class="${btn(s.controlType === 'gamepad')}" onclick="UIManager.setSetting('controlType', 'gamepad')">GAMEPAD</button>
+                            <button style="${btn(s.controlType === 'touch')}" onclick="UIManager.setSetting('controlType', 'touch')">TOUCH</button>
+                            <button style="${btn(s.controlType === 'gamepad')}" onclick="UIManager.setSetting('controlType', 'gamepad')">GAMEPAD</button>
                         </div>
                     </div>
                     <div style="${s.controlType === 'touch' ? '' : 'opacity:0.4;pointer-events:none'}">
                         <h3 style="font-size:10px;text-transform:uppercase;letter-spacing:0.1em;color:${COLORS.TEXT_MUTED};font-weight:bold;margin-bottom:8px">Joystick</h3>
                         <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
-                            <button class="${btn(s.joystickMode === 'fixed')}" onclick="UIManager.setSetting('joystickMode', 'fixed')">FIXO</button>
-                            <button class="${btn(s.joystickMode === 'anywhere')}" onclick="UIManager.setSetting('joystickMode', 'anywhere')">QUALQUER</button>
+                            <button style="${btn(s.joystickMode === 'fixed')}" onclick="UIManager.setSetting('joystickMode', 'fixed')">FIXO</button>
+                            <button style="${btn(s.joystickMode === 'anywhere')}" onclick="UIManager.setSetting('joystickMode', 'anywhere')">QUALQUER</button>
                         </div>
                     </div>
                     <div>
                         <h3 style="font-size:10px;text-transform:uppercase;letter-spacing:0.1em;color:${COLORS.TEXT_MUTED};font-weight:bold;margin-bottom:8px">Áudio</h3>
                         <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px">
-                            <button class="${btn(s.sfxEnabled)}" onclick="UIManager.setSetting('sfxEnabled', true)">SFX ON</button>
-                            <button class="${btn(!s.sfxEnabled)}" onclick="UIManager.setSetting('sfxEnabled', false)">SFX OFF</button>
+                            <button style="${btn(s.sfxEnabled)}" onclick="UIManager.setSetting('sfxEnabled', true)">SFX ON</button>
+                            <button style="${btn(!s.sfxEnabled)}" onclick="UIManager.setSetting('sfxEnabled', false)">SFX OFF</button>
                         </div>
                         <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
-                            <button class="${btn(s.musicEnabled)}" onclick="UIManager.setSetting('musicEnabled', true)">MUS ON</button>
-                            <button class="${btn(!s.musicEnabled)}" onclick="UIManager.setSetting('musicEnabled', false)">MUS OFF</button>
+                            <button style="${btn(s.musicEnabled)}" onclick="UIManager.setSetting('musicEnabled', true)">MUS ON</button>
+                            <button style="${btn(!s.musicEnabled)}" onclick="UIManager.setSetting('musicEnabled', false)">MUS OFF</button>
                         </div>
                     </div>
                     <div>
                         <h3 style="font-size:10px;text-transform:uppercase;letter-spacing:0.1em;color:${COLORS.TEXT_MUTED};font-weight:bold;margin-bottom:8px">Fonte</h3>
                         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px">
-                            <button class="${btn(s.fontSize === 'small')}" onclick="UIManager.setFontSize('small')">P</button>
-                            <button class="${btn(s.fontSize === 'medium')}" onclick="UIManager.setFontSize('medium')">M</button>
-                            <button class="${btn(s.fontSize === 'large')}" onclick="UIManager.setFontSize('large')">G</button>
+                            <button style="${btn(s.fontSize === 'small')}" onclick="UIManager.setFontSize('small')">P</button>
+                            <button style="${btn(s.fontSize === 'medium')}" onclick="UIManager.setFontSize('medium')">M</button>
+                            <button style="${btn(s.fontSize === 'large')}" onclick="UIManager.setFontSize('large')">G</button>
                         </div>
                     </div>
                     <button onclick="StorageManager.clearAll(); location.reload();" style="padding:12px;border-radius:12px;font-size:10px;font-weight:bold;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.2);color:${COLORS.DANGER};cursor:pointer;text-transform:uppercase;letter-spacing:0.1em;transition:transform 0.2s">Apagar Progresso</button>
