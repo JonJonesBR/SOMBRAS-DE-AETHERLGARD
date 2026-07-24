@@ -1,2 +1,2 @@
-# SOMBRAS-DE-AETHERLGARD
-SOMBRAS DE AETHERLGARD
+# Sombras de Krevathorn
+Sombras de Krevathorn
