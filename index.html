@@ -15,11 +15,11 @@
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="Aethelgard">
-    <meta name="application-name" content="Aethelgard">
+    <meta name="apple-mobile-web-app-title" content="Krevathorn">
+    <meta name="application-name" content="Krevathorn">
     <meta name="msapplication-TileColor" content="#0a0a12">
 
-    <title>Sombras de Aethelgard</title>
+    <title>Krevathorn</title>
     <!-- Fonts: system fallback (fully offline) -->
     <!-- Material Icons: replaced with inline SVG sprite -->
 
@@ -851,7 +851,7 @@ body { background: #08080f !important; }
             </div>
             <!-- Title -->
             <div style="font-family:'Newsreader',Georgia,serif;font-size:2.2rem;color:#e0b6ff;text-shadow:0 0 30px rgba(224,182,255,0.5),0 0 60px rgba(157,78,221,0.3);animation:logoFloat 4s ease-in-out infinite;">Sombras de</div>
-            <div style="font-family:'Newsreader',Georgia,serif;font-size:2.6rem;font-weight:bold;color:#f0e0ff;text-shadow:0 0 30px rgba(224,182,255,0.6),0 0 60px rgba(157,78,221,0.4);animation:logoFloat 4s ease-in-out 0.2s infinite;margin-top:-8px;">Aethelgard</div>
+            <div style="font-family:'Newsreader',Georgia,serif;font-size:2.6rem;font-weight:bold;color:#f0e0ff;text-shadow:0 0 30px rgba(224,182,255,0.6),0 0 60px rgba(157,78,221,0.4);animation:logoFloat 4s ease-in-out 0.2s infinite;margin-top:-8px;">Krevathorn</div>
             <div style="font-size:0.6rem;letter-spacing:0.4em;text-transform:uppercase;color:rgba(255,255,255,0.35);margin-top:12px;">O Abismo Aguarda</div>
             <!-- Loading bar -->
             <div style="margin-top:40px;width:160px;height:3px;background:rgba(255,255,255,0.08);border-radius:4px;overflow:hidden;margin-left:auto;margin-right:auto;">
@@ -889,7 +889,7 @@ body { background: #08080f !important; }
                     <defs><linearGradient id="logoGrad2" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#9d4edd"/><stop offset="100%" stop-color="#e0b6ff"/></linearGradient></defs>
                 </svg>
                 <div>
-                    <h1 class="font-headline-xl" style="font-size:clamp(1.5rem,6vw,2.2rem);color:#f0e0ff;text-shadow:0 0 20px rgba(224,182,255,0.4);letter-spacing:-0.02em;">Sombras de Aethelgard</h1>
+                    <h1 class="font-headline-xl" style="font-size:clamp(1.5rem,6vw,2.2rem);color:#f0e0ff;text-shadow:0 0 20px rgba(224,182,255,0.4);letter-spacing:-0.02em;">Krevathorn</h1>
                     <p class="text-center" style="font-size:clamp(0.6rem,2.2vw,0.8rem);letter-spacing:0.3em;text-transform:uppercase;color:rgba(224,182,255,0.4);margin-top:-2px;">O Abismo Aguarda</p>
                 </div>
             </div>
@@ -929,6 +929,11 @@ body { background: #08080f !important; }
             <div id="mode-description" style="text-align:center;font-size:clamp(0.65rem,2.2vw,0.8rem);color:rgba(255,255,255,0.45);margin-bottom:10px;min-height:2.2em;line-height:1.4;padding:0 8px;">
                 Evolua seu personagem em dungeons cada vez mais dificeis.
             </div>
+
+            <!-- Continue (shown only if a saved run exists) -->
+            <button id="continue-run-btn" onclick="window.continueGame()" style="display:none;width:100%;padding:12px;margin-bottom:8px;border-radius:16px;font-size:clamp(0.85rem,3vw,1rem);font-weight:800;border:1.5px solid rgba(60,227,106,0.4);background:linear-gradient(135deg,rgba(0,136,54,0.25),rgba(60,227,106,0.15));color:#3ce36a;text-transform:uppercase;letter-spacing:0.06em;transition:all 0.2s;touch-action:manipulation;">
+                ▶ Continuar Jogo
+            </button>
 
             <!-- Class Selection (inline, no back/forth) -->
             <div id="class-row" style="display:flex;gap:6px;margin-bottom:6px;">
@@ -1224,7 +1229,7 @@ const Debug = {
     init() {
         this.startTime = performance.now();
         this.lastFrameTime = performance.now();
-        console.log(`[Aethelgard] Debug system initialized. Level: ${['DEBUG','INFO','WARN','ERROR'][this.level]}`);
+        console.log(`[Krevathorn] Debug system initialized. Level: ${['DEBUG','INFO','WARN','ERROR'][this.level]}`);
     },
 
     // Core logging
@@ -1267,7 +1272,10 @@ const Debug = {
     // Safe execution wrapper
     safe(fn, context = 'unknown', fallback = null) {
         try {
-            return fn();
+            const result = fn();
+            // Success - reset this context's consecutive-failure streak
+            if (this._failStreaks) this._failStreaks[context] = 0;
+            return result;
         } catch (e) {
             this.error(`Error in ${context}`, { error: e.message, stack: e.stack });
             this.errors.push({ context, error: e.message, stack: e.stack, time: performance.now() });
@@ -1285,6 +1293,32 @@ const Debug = {
                 toast.textContent = context + ': ' + e.message;
                 document.body.appendChild(toast);
                 setTimeout(function() { toast.style.opacity = '0'; toast.style.transition = 'opacity 0.3s'; setTimeout(function() { toast.remove(); }, 300); }, 3000);
+            }
+            // Watchdog: if the SAME step keeps failing frame after frame, the game
+            // is effectively soft-locked (e.g. a stuck fade/flash overlay covering
+            // the screen forever). After ~1.5s of consecutive failures on the same
+            // context, force-clear the visual state that's most likely stuck so
+            // the player isn't left staring at a frozen white/black screen.
+            if (!this._failStreaks) this._failStreaks = {};
+            this._failStreaks[context] = (this._failStreaks[context] || 0) + 1;
+            if (this._failStreaks[context] === 90) {
+                try {
+                    if (typeof _fadeState !== 'undefined') _fadeState = null;
+                    if (typeof _fadeText !== 'undefined') _fadeText = '';
+                    if (typeof _transitioning !== 'undefined') _transitioning = false;
+                    if (typeof ScreenEffects !== 'undefined') {
+                        ScreenEffects._flashAlpha = 0;
+                        ScreenEffects._vignetteAlpha = 0;
+                        ScreenEffects._vignetteTarget = 0;
+                        ScreenEffects._shake = 0;
+                        ScreenEffects._chromaIntensity = 0;
+                    }
+                    var recoverToast = document.createElement('div');
+                    recoverToast.style.cssText = 'position:fixed;top:20px;left:50%;transform:translateX(-50%);background:rgba(140,90,0,0.9);color:#fff;padding:8px 16px;border-radius:12px;z-index:99999;font-size:11px;max-width:80vw;text-align:center;font-family:monospace;';
+                    recoverToast.textContent = 'O jogo travou e foi recuperado automaticamente.';
+                    document.body.appendChild(recoverToast);
+                    setTimeout(function() { recoverToast.remove(); }, 4000);
+                } catch (e3) {}
             }
             return fallback;
         }
@@ -1334,7 +1368,7 @@ const Debug = {
     // Toggle debug level
     cycleLevel() {
         this.level = (this.level + 1) % 4;
-        console.log(`[Aethelgard] Debug level changed to ${['DEBUG','INFO','WARN','ERROR'][this.level]}`);
+        console.log(`[Krevathorn] Debug level changed to ${['DEBUG','INFO','WARN','ERROR'][this.level]}`);
         return this.level;
     },
 
@@ -1797,6 +1831,103 @@ const StorageManager = {
 // Initialize on load
 Debug.info(`StorageManager initialized, schema v${StorageManager.CURRENT_VERSION}`);
 
+// ============================================================
+// SAVE SYSTEM - lets the player close the game mid-run and pick up
+// later. Checkpoints at the start of each floor plus periodic/lifecycle
+// autosaves; does NOT try to preserve exact in-floor entity positions,
+// it just restores player progression and regenerates that floor fresh
+// (same as a normal floor transition already does).
+// ============================================================
+const SaveSystem = {
+    KEY: 'aethelgard_save',
+    VERSION: 1,
+
+    _serialize() {
+        if (!player || (gameState !== 'PLAYING' && gameState !== 'CONTINUE')) return null;
+        return {
+            _version: this.VERSION,
+            savedAt: Date.now(),
+            type: player.type,
+            lvl: player.lvl, xp: player.xp, hp: player.hp, maxHp: player.maxHp,
+            kills: player.kills, currency: player.currency,
+            skillPoints: player.skillPoints || 0,
+            unlockedSkills: player.unlockedSkills || [],
+            skills: player.skills || {},
+            equipment: player.equipment || {},
+            currentWeapon: player.currentWeapon || null,
+            weaponLevel: player.weaponLevel || 1,
+            weaponDamageMult: player.weaponDamageMult || 1,
+            weaponFireRateMult: player.weaponFireRateMult || 1,
+            weaponRangeMult: player.weaponRangeMult || 1,
+            weaponLifesteal: player.weaponLifesteal || 0,
+            chainLightning: !!player.chainLightning, slowAura: !!player.slowAura,
+            pierce: !!player.pierce, poison: !!player.poison, spellEcho: !!player.spellEcho,
+            damageBoost: player.damageBoost || 0, critChance: player.critChance || 0,
+            damageMult: player.damageMult || 1, lr: player.lr,
+            dungeonLevel: (typeof dungeonLevel !== 'undefined') ? dungeonLevel : 1,
+            gameMode: (typeof gameMode !== 'undefined') ? gameMode : 'dungeon',
+            dungeonKills: (typeof dungeonKills !== 'undefined') ? dungeonKills : 0,
+            dungeonKillTarget: (typeof dungeonKillTarget !== 'undefined') ? dungeonKillTarget : 18,
+            continuesLeft: (typeof continuesLeft !== 'undefined') ? continuesLeft : 3,
+            biome: (typeof BiomeSystem !== 'undefined') ? BiomeSystem.currentBiome : 'dungeon',
+            dungeonsCompleted: (typeof BiomeSystem !== 'undefined') ? BiomeSystem.dungeonsCompleted : 0,
+            prestigeLevel: (typeof prestigeLevel !== 'undefined') ? prestigeLevel : 0,
+            totalGamesPlayed: (typeof totalGamesPlayed !== 'undefined') ? totalGamesPlayed : 0
+        };
+    },
+
+    save() {
+        return Debug.safe(() => {
+            const data = this._serialize();
+            if (!data) return false;
+            localStorage.setItem(this.KEY, JSON.stringify(data));
+            return true;
+        }, 'SaveSystem.save', false);
+    },
+
+    load() {
+        return Debug.safe(() => {
+            const raw = localStorage.getItem(this.KEY);
+            if (!raw) return null;
+            const data = JSON.parse(raw);
+            if (!data || typeof data !== 'object') return null;
+            return data;
+        }, 'SaveSystem.load', null);
+    },
+
+    hasSave() {
+        return Debug.safe(() => localStorage.getItem(this.KEY) !== null, 'SaveSystem.hasSave', false);
+    },
+
+    clear() {
+        return Debug.safe(() => { localStorage.removeItem(this.KEY); }, 'SaveSystem.clear');
+    },
+
+    // Apply saved progression onto a freshly-constructed Player instance
+    applyTo(p, data) {
+        if (!p || !data) return;
+        p.lvl = data.lvl || 1; p.xp = data.xp || 0;
+        p.maxHp = data.maxHp || p.maxHp; p.hp = Math.max(1, Math.min(data.hp || p.maxHp, p.maxHp));
+        p.kills = data.kills || 0; p.currency = data.currency || 0;
+        p.skillPoints = data.skillPoints || 0;
+        p.unlockedSkills = data.unlockedSkills || [];
+        p.skills = data.skills || {};
+        p.equipment = data.equipment || {};
+        p.currentWeapon = data.currentWeapon || null;
+        p.weaponLevel = data.weaponLevel || 1;
+        p.weaponDamageMult = data.weaponDamageMult || 1;
+        p.weaponFireRateMult = data.weaponFireRateMult || 1;
+        p.weaponRangeMult = data.weaponRangeMult || 1;
+        p.weaponLifesteal = data.weaponLifesteal || 0;
+        p.chainLightning = !!data.chainLightning; p.slowAura = !!data.slowAura;
+        p.pierce = !!data.pierce; p.poison = !!data.poison; p.spellEcho = !!data.spellEcho;
+        p.damageBoost = data.damageBoost || 0; p.critChance = data.critChance || 0;
+        p.damageMult = data.damageMult || 1;
+        if (data.lr) p.lr = data.lr;
+    }
+};
+window.SaveSystem = SaveSystem;
+
 // Export for Node.js testing
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = { StorageManager };
@@ -1815,7 +1946,7 @@ const I18n = {
     STRINGS: {
         pt: {
             // Game title
-            'game.title': 'Sombras de Aethelgard',
+            'game.title': 'Krevathorn',
 
             // Start screen
             'start.chooseClass': 'Escolha sua Classe:',
@@ -1898,7 +2029,7 @@ const I18n = {
 
         en: {
             // Game title
-            'game.title': 'Shadows of Aethelgard',
+            'game.title': 'Krevathorn',
 
             // Start screen
             'start.chooseClass': 'Choose your Class:',
@@ -1981,7 +2112,7 @@ const I18n = {
 
         es: {
             // Game title
-            'game.title': 'Sombras de Aethelgard',
+            'game.title': 'Krevathorn',
 
             // Start screen
             'start.chooseClass': 'Elige tu Clase:',
@@ -2363,32 +2494,32 @@ var CONFIG = {
     BIOME_NAMES: ['dungeon', 'lavaCave', 'crypt', 'forest'],
 
     // Biome: Dungeon (default)
-    BIOME_DUNGEON_WALL_COLOR: '#2a2a35',
-    BIOME_DUNGEON_FLOOR_COLOR: '#151520',
+    BIOME_DUNGEON_WALL_COLOR: '#3a3a4a',
+    BIOME_DUNGEON_FLOOR_COLOR: '#121218',
     BIOME_DUNGEON_HAZARD_TYPES: ['fire', 'spikes', 'ice'],
     BIOME_DUNGEON_HAZARD_WEIGHTS: [0.45, 0.4, 0.15],
     BIOME_DUNGEON_AMBIENT_COLOR: null,
     BIOME_DUNGEON_AMBIENT_CHANCE: 0,
 
     // Biome: Lava Cave
-    BIOME_LAVA_WALL_COLOR: '#2a1510',
-    BIOME_LAVA_FLOOR_COLOR: '#1a0a08',
+    BIOME_LAVA_WALL_COLOR: '#40241a',
+    BIOME_LAVA_FLOOR_COLOR: '#170a08',
     BIOME_LAVA_HAZARD_TYPES: ['fire', 'fire', 'spikes', 'poison'], // more fire
     BIOME_LAVA_HAZARD_WEIGHTS: [0.66, 0.66, 0.34, 0.2],
     BIOME_LAVA_AMBIENT_COLOR: '#ff4400',
     BIOME_LAVA_AMBIENT_CHANCE: 0.03,
 
     // Biome: Crypt
-    BIOME_CRYPT_WALL_COLOR: '#1a1a2a',
-    BIOME_CRYPT_FLOOR_COLOR: '#0a0a18',
+    BIOME_CRYPT_WALL_COLOR: '#38385c',
+    BIOME_CRYPT_FLOOR_COLOR: '#14141f',
     BIOME_CRYPT_HAZARD_TYPES: ['spikes', 'spikes', 'fire', 'ice'], // more spikes
     BIOME_CRYPT_HAZARD_WEIGHTS: [0.66, 0.66, 0.34, 0.2],
     BIOME_CRYPT_AMBIENT_COLOR: '#6666aa',
     BIOME_CRYPT_AMBIENT_CHANCE: 0.02,
 
     // Biome: Forest
-    BIOME_FOREST_WALL_COLOR: '#0a1a0a',
-    BIOME_FOREST_FLOOR_COLOR: '#081208',
+    BIOME_FOREST_WALL_COLOR: '#234a23',
+    BIOME_FOREST_FLOOR_COLOR: '#0f1f0f',
     BIOME_FOREST_HAZARD_TYPES: ['spikes', 'fire', 'poison'],
     BIOME_FOREST_HAZARD_WEIGHTS: [0.6, 0.4, 0.25],
     BIOME_FOREST_AMBIENT_COLOR: '#33ff33',
@@ -2754,25 +2885,25 @@ var CONFIG = {
 
     // Lore fragments database
     LORE_FRAGMENTS: [
-        { id: 'lore_001', category: 'history', title: 'A Queda de Aethelgard', text: 'H mil anos, Aethelgard era um reino prspero. At que o Vu das Sombras caiu, selando o destino de todos os que habitavam estas terras.', rarity: 'common' },
+        { id: 'lore_001', category: 'history', title: 'A Queda de Krevathorn', text: 'H mil anos, Krevathorn era um reino prspero. At que o Vu das Sombras caiu, selando o destino de todos os que habitavam estas terras.', rarity: 'common' },
         { id: 'lore_002', category: 'history', title: 'O ltimo Rei', text: 'O Rei Aldric foi o ltimo governante antes do Vu. Seu paradeiro  desconhecido, mas dizem que sua espada ainda aguarda em alguma masmorra esquecida.', rarity: 'rare' },
-        { id: 'lore_003', category: 'history', title: 'As Trs Eras', text: 'Aethelgard passou por trs eras: a Era da Luz, a Era do Crepsculo e a atual Era das Sombras. Poucos acreditam que uma quarta era vir.', rarity: 'rare' },
+        { id: 'lore_003', category: 'history', title: 'As Trs Eras', text: 'Krevathorn passou por trs eras: a Era da Luz, a Era do Crepsculo e a atual Era das Sombras. Poucos acreditam que uma quarta era vir.', rarity: 'rare' },
         { id: 'lore_004', category: 'monsters', title: 'A Origem dos Goblins', text: 'Os Goblins do Tesouro no so naturais  foram criados por um alquimista louco que transformou seus aprendizes em criaturas obcecadas por ouro.', rarity: 'common' },
         { id: 'lore_005', category: 'monsters', title: 'Os Antigos', text: 'Os chefes que habitam as masmorras mais profundas so fragmentos do Vu das Sombras ganhando conscincia prpria.', rarity: 'rare' },
         { id: 'lore_006', category: 'monsters', title: 'Mmicos', text: 'Mmicos eram bas de tesouro encantados por magos paranicos. Com o tempo, desenvolveram conscincia e fome.', rarity: 'common' },
         { id: 'lore_007', category: 'monsters', title: 'A Praga dos Enxames', text: 'Criaturas do enxame surgiram quando o Vu corrompeu colnias de insetos gigantes. Agora se multiplicam sem parar.', rarity: 'uncommon' },
         { id: 'lore_008', category: 'artifacts', title: 'A Lmina do Crepsculo', text: 'Forgada na fronteira entre luz e sombra, esta espada pode cortar at o Vu. Seu paradeiro atual  desconhecido.', rarity: 'rare' },
         { id: 'lore_009', category: 'artifacts', title: 'O Orbe de Cristal', text: 'Um artefato dos magos antigos que permite canalizar energia arcana pura. Fragmentos dele aparecem como armas mgicas.', rarity: 'uncommon' },
-        { id: 'lore_010', category: 'artifacts', title: 'Armadura do ltimo Guardio', text: 'A armadura encantada do ltimo protetor de Aethelgard. Dizem que concede proteo contra as sombras.', rarity: 'rare' },
+        { id: 'lore_010', category: 'artifacts', title: 'Armadura do ltimo Guardio', text: 'A armadura encantada do ltimo protetor de Krevathorn. Dizem que concede proteo contra as sombras.', rarity: 'rare' },
         { id: 'lore_011', category: 'npcs', title: 'O Mercador Misterioso', text: 'Ningum sabe de onde vem o mercador. Ele aparece e desaparece sem explicao, sempre com mercadorias raras.', rarity: 'common' },
         { id: 'lore_012', category: 'npcs', title: 'Os Prestigiadores', text: 'Guerreiros que morreram e retornaram mais fortes. O ritual de prestigio  antigo e perigoso  poucos sobrevivem.', rarity: 'uncommon' },
         { id: 'lore_013', category: 'npcs', title: 'A Profecia do Despertar', text: 'Uma antiga profecia diz que quando o dcimo guerreiro prestigiar, o Vu das Somras comear a se dissipar.', rarity: 'rare' },
-        { id: 'lore_014', category: 'history', title: 'Os Biomas Corrompidos', text: 'As cavernas de lava, criptas e florestas sombrias j foram parte do reino de Aethelgard. O Vu as transformou.', rarity: 'uncommon' },
+        { id: 'lore_014', category: 'history', title: 'Os Biomas Corrompidos', text: 'As cavernas de lava, criptas e florestas sombrias j foram parte do reino de Krevathorn. O Vu as transformou.', rarity: 'uncommon' },
         { id: 'lore_015', category: 'monsters', title: 'Armadilhas Vivas', text: 'As armadilhas nas masmorras no so mecnicas  so criaturas que evoluram para se camuflar como parte do cho.', rarity: 'common' },
         { id: 'lore_016', category: 'artifacts', title: 'As Mutaes', text: 'As mutaes que os guerreiros descobrem so fragmentos do poder do Vu. Us-las  um risco calculado.', rarity: 'uncommon' },
         { id: 'lore_017', category: 'npcs', title: 'Os Companheiros', text: 'Criaturas mgicas que escoltem guerreiros em suas jornadas. Ningum sabe por que ajudam os humanos.', rarity: 'common' },
-        { id: 'lore_018', category: 'history', title: 'O Vu das Sombras', text: 'Uma barreira mgica que caiu sobre Aethelgard sem aviso. Ningum sabe quem ou o que a criou. Ela distorce a realidade dentro das masmorras.', rarity: 'rare' },
-        { id: 'lore_019', category: 'artifacts', title: 'Moedas de Aethelgard', text: 'As moedas encontradas nas masmorras so fragmentos de riqueza antiga. O mercador as aceita, mas ningum sabe por qu.', rarity: 'common' },
+        { id: 'lore_018', category: 'history', title: 'O Vu das Sombras', text: 'Uma barreira mgica que caiu sobre Krevathorn sem aviso. Ningum sabe quem ou o que a criou. Ela distorce a realidade dentro das masmorras.', rarity: 'rare' },
+        { id: 'lore_019', category: 'artifacts', title: 'Moedas de Krevathorn', text: 'As moedas encontradas nas masmorras so fragmentos de riqueza antiga. O mercador as aceita, mas ningum sabe por qu.', rarity: 'common' },
         { id: 'lore_020', category: 'monsters', title: 'A Furia dos Chefes', text: 'Quando feridos, os chefes liberam parte do poder do Vu, tornando-se mais rpidos e letais.  o instinto de sobrevivncia do Vu.', rarity: 'uncommon' },
         // --- Ato II: A Traio de Aldric ---
         { id: 'lore_021', category: 'history', title: 'O Pacto Proibido', text: 'Aldric no desapareceu  ele convocou o Vu. Para salvar seu filho moribundo, o Rei assinou um pacto com foras que nenhum mortal deveria tocar.', rarity: 'rare' },
@@ -2790,13 +2921,13 @@ var CONFIG = {
         { id: 'lore_031', category: 'artifacts', title: 'A Furia do Guerreiro', text: 'Guerreiros antigos descobriram que raiva controlada amplifica a fora fsica. Cada golpe bem-sucedido acumula energia  o segredo est em no desperdiar.', rarity: 'uncommon' },
         { id: 'lore_032', category: 'artifacts', title: 'O Veneno do Assassino', text: 'A Guilda dos Rogues destilou o prprio Vu em um veneno que corri as sombras. Paradoxalmente, funciona melhor contra criaturas criadas pelo Vu.', rarity: 'uncommon' },
         { id: 'lore_033', category: 'artifacts', title: 'O Orbe Protetor', text: 'Magos descobriram que concentrar energia arcana ao redor do corpo absorve um impacto. O segredo foi esquecido  at agora.', rarity: 'rare' },
-        { id: 'lore_034', category: 'artifacts', title: 'A Tempestade Arcana', text: 'Quando um mago lana trs feitios em sequncia perfeita, a ressonncia arcana cria uma exploso espontnea. Os magos de Aethelgard chamavam isso de Trade.', rarity: 'rare' },
-        { id: 'lore_035', category: 'artifacts', title: 'O Relicrio do Drago', text: 'Uma armadura incompleta cujos fragmentos esto espalhados pelas masmorras. Diz-se que quem reunir todas as peas receber a bno do ltimo drago de Aethelgard.', rarity: 'rare' },
+        { id: 'lore_034', category: 'artifacts', title: 'A Tempestade Arcana', text: 'Quando um mago lana trs feitios em sequncia perfeita, a ressonncia arcana cria uma exploso espontnea. Os magos de Krevathorn chamavam isso de Trade.', rarity: 'rare' },
+        { id: 'lore_035', category: 'artifacts', title: 'O Relicrio do Drago', text: 'Uma armadura incompleta cujos fragmentos esto espalhados pelas masmorras. Diz-se que quem reunir todas as peas receber a bno do ltimo drago de Krevathorn.', rarity: 'rare' },
         // --- NPCs: personagens expandidos ---
         { id: 'lore_036', category: 'npcs', title: 'Dorian, o Mercador', text: 'Dorian no vende por lucro  ele testa cada viajante. Quem demonstra determinao recebe seus melhores preos. Quem hesita paga mais caro.', rarity: 'common' },
         { id: 'lore_037', category: 'npcs', title: 'Seraphina, a Guia', text: 'Uma ex-guerreira que chegou  superfcie e voltou voluntariamente para guiar outros. Ela conhece cada corredor, cada armadilha  e cada segredo das masmorras.', rarity: 'uncommon' },
         { id: 'lore_038', category: 'npcs', title: 'Vael, o Orculo', text: 'Vael enxerga atravs do Vu  literalmente. Perdeu os olhos fsicos h anos, mas agora v o que poucos conseguem: o futuro, o passado, e o que existe entre os dois.', rarity: 'rare' },
-        { id: 'lore_039', category: 'npcs', title: 'A Classe do Guerreiro', text: 'Os primeiros guerreiros de Aethelgard eram ferreiros. Quando o Vu caiu, pegaram suas ferramentas e as transformaram em armas. Tradio mantida at hoje.', rarity: 'common' },
+        { id: 'lore_039', category: 'npcs', title: 'A Classe do Guerreiro', text: 'Os primeiros guerreiros de Krevathorn eram ferreiros. Quando o Vu caiu, pegaram suas ferramentas e as transformaram em armas. Tradio mantida at hoje.', rarity: 'common' },
         { id: 'lore_040', category: 'npcs', title: 'A Classe do Rogue', text: 'Os Rogues descencem dos espies de Aldric  aqueles que descobriram a verdade sobre o Pacto cedo demais e precisaram desaparecer para sobreviver.', rarity: 'uncommon' },
         // --- Ato III: O Despertar ---
         { id: 'lore_041', category: 'history', title: 'O Ritual de Retorno', text: 'Prestige no  apenas poder   memria. Cada retorno fortalece o esprito porque carrega o aprendizado de todas as mortes anteriores. O Vu teme quem lembra.', rarity: 'uncommon' },
@@ -2898,7 +3029,7 @@ var CONFIG = {
     // Warrior Weapons (melee/sword types)
     WEAPONS_WARRIOR: [
         { id: 'w_sword1', name: 'Espada Curta', desc: 'Equilibrada', flavor: 'A lâmina confiável de um guarda da cidade.', damageMult: 1.0, fireRate: 1.0, range: 1.0, color: '#aaaaff', tier: 0 },
-        { id: 'w_sword2', name: 'Espada Longa', desc: '+30% dano, -10% speed', flavor: 'Forjada em aço de Aethelgard.', damageMult: 1.3, fireRate: 0.9, range: 1.2, color: '#33ff33', tier: 1 },
+        { id: 'w_sword2', name: 'Espada Longa', desc: '+30% dano, -10% speed', flavor: 'Forjada em aço de Krevathorn.', damageMult: 1.3, fireRate: 0.9, range: 1.2, color: '#33ff33', tier: 1 },
         { id: 'w_greataxe', name: 'Machado de Guerra', desc: '+60% dano, -25% speed', flavor: 'Apenas os mais fortes conseguem empunhá-lo.', damageMult: 1.6, fireRate: 0.75, range: 1.4, color: '#33ccff', tier: 2, unique: 'cleave' },
         { id: 'w_flametongue', name: 'Lingua de Fogo', desc: '+80% dmg, fire trail', flavor: 'Ardendo com a fúria de um vulcão adormecido.', damageMult: 1.8, fireRate: 0.8, range: 1.3, color: '#cc66ff', tier: 3, fireTrail: true, element: 'fire', unique: 'fireTrail' },
         { id: 'w_excalibur', name: 'Excalibur', desc: '+120% dmg, lifesteal', flavor: 'A espada do Rei Eterno.', damageMult: 2.2, fireRate: 0.85, range: 1.5, color: '#ff8800', tier: 4, lifesteal: 0.1, element: 'fire', unique: 'holySmite' },
@@ -3238,6 +3369,7 @@ function _triggerWin() {
     gameState = 'WIN';
     Statistics.save();
     NarrativeSystem.save();
+    if (typeof SaveSystem !== 'undefined') Debug.safe(() => SaveSystem.clear(), 'clearSaveOnWin');
     if(typeof SND !== 'undefined' && SND.playAchievement) SND.playAchievement();
     if (typeof ScreenEffects !== "undefined") {
         if (ScreenEffects.onBossDeath) ScreenEffects.onBossDeath();
@@ -3697,6 +3829,7 @@ function _handlePlayerDeath() {
             if (typeof ScreenEffects !== 'undefined' && ScreenEffects.onPlayerDeath) ScreenEffects.onPlayerDeath();
             gameState = 'GAME_OVER'; uiG.classList.remove('hidden'); uiG.classList.add('fade-in');
             _populateGameOverUI();
+            if (typeof SaveSystem !== 'undefined') Debug.safe(() => SaveSystem.clear(), 'clearSaveOnDeath');
         }
         // Save operations are non-critical; wrap them so a save failure
         // never blocks the game-over transition.
@@ -4053,6 +4186,7 @@ function update() {
     Debug.safe(() => _updatePortalAndFloor(), 'updatePortalAndFloor');
     Debug.safe(() => _updateEnemySpawning(), 'updateEnemySpawning');
     Debug.safe(() => _updateCameraAndHUD(), 'updateCameraAndHUD');
+    if (gameTime % 1200 === 0) Debug.safe(() => SaveSystem.save(), 'autosaveTimer');
 }
 
 // ============================================================
@@ -4431,6 +4565,7 @@ function draw() {
                     _fadeState.phase = 'mid';
                 }
             } else if (_fadeState.phase === 'mid') {
+                try {
                 _cachedLightCanvas = null; _lightingThrottle = 0; _lightingDirty = true;
                 map = new Map(); _mmDirty = true;
                 const sp = map.getSafeSpawn(); if (player) { player.x = sp.x; player.y = sp.y; }
@@ -4457,6 +4592,15 @@ function draw() {
                     entities.push(new Enemy(ep.x, ep.y, false));
                 }
                 ScreenEffects.onBossDeath(); Statistics.data.dungeonsCompleted++;
+                Debug.safe(() => SaveSystem.save(), 'autosaveFloor');
+                } catch (e) {
+                    // Never let a failure here leave the fade stuck covering the
+                    // screen forever - log it, make sure a map/player exist, and
+                    // fall through to 'out' regardless.
+                    console.error('[FATAL ERROR in floorTransition]', e && e.message, e && e.stack);
+                    if (!map) { try { map = new Map(); _mmDirty = true; } catch(e2) {} }
+                    if (!entities || !entities.length) entities = player ? [player] : [];
+                }
                 _fadeState.phase = 'out';
             } else if (_fadeState.phase === 'out') {
                 _fadeState.alpha -= 0.04;
@@ -4731,6 +4875,7 @@ const PauseSystem = {
         document.getElementById('pause-resume').addEventListener('click', function() { self.resume(); });
         document.getElementById('pause-quit').addEventListener('click', function() {
             self.resume();
+            if (typeof SaveSystem !== 'undefined') Debug.safe(() => SaveSystem.save(), 'autosaveQuitToMenu');
             gameState = 'START';
             if (uiS) { uiS.classList.remove('hidden'); }
             if (uiG) uiG.classList.add('hidden');
@@ -4740,6 +4885,7 @@ const PauseSystem = {
             if (topBar) topBar.classList.add('hidden');
             if (actRight) actRight.classList.add('hidden');
             if (botUtils) botUtils.classList.add('hidden');
+            if (window._refreshContinueButton) window._refreshContinueButton();
         });
         // Support back button for pause
         document.addEventListener('keydown', function(e) {
@@ -5075,6 +5221,7 @@ function _initEngine() {
                     if(modeDiv) modeDiv.style.display = 'block';
                     if(classDiv) classDiv.style.display = 'none';
                     gameState = 'START';
+                    if (window._refreshContinueButton) window._refreshContinueButton();
                 }, 350);
             }
         };
@@ -9050,7 +9197,7 @@ const BiomeSystem = {
             ambientChance: CONFIG.BIOME_CRYPT_AMBIENT_CHANCE,
             wallDetail: true,
             floorDetail: true,
-            lightAlpha: 0.60  // crypts are darker
+            lightAlpha: 0.53  // crypts are moody but still readable
         },
         forest: {
             name: ' Floresta Sombria',
@@ -9062,7 +9209,7 @@ const BiomeSystem = {
             ambientChance: CONFIG.BIOME_FOREST_AMBIENT_CHANCE,
             wallDetail: true,
             floorDetail: true,
-            lightAlpha: 0.56  // forest canopy = medium dark
+            lightAlpha: 0.50  // forest canopy = medium dark, still readable
         }
     },
 
@@ -10185,17 +10332,22 @@ class Map {
                     bctx.fillRect(px,py,ts,ts);
                     
                     // Subtle stone block lines
-                    bctx.strokeStyle = 'rgba(0,0,0,0.2)';
+                    bctx.strokeStyle = 'rgba(0,0,0,0.35)';
                     bctx.lineWidth = 1;
                     bctx.strokeRect(px+2, py+2, ts-4, ts-4);
-                    
+
+                    // Bright outer edge so walls read clearly against the floor
+                    bctx.strokeStyle = 'rgba(255,255,255,0.22)';
+                    bctx.lineWidth = 2;
+                    bctx.strokeRect(px+1, py+1, ts-2, ts-2);
+
                     // Inner highlight (top-left edge)
-                    bctx.fillStyle = 'rgba(255,255,255,0.04)';
+                    bctx.fillStyle = 'rgba(255,255,255,0.12)';
                     bctx.fillRect(px+2, py+2, ts-4, 2);
                     bctx.fillRect(px+2, py+2, 2, ts-4);
-                    
+
                     // Inner shadow (bottom-right edge)
-                    bctx.fillStyle = 'rgba(0,0,0,0.08)';
+                    bctx.fillStyle = 'rgba(0,0,0,0.22)';
                     bctx.fillRect(px+ts-4, py+2, 2, ts-4);
                     bctx.fillRect(px+2, py+ts-4, ts-4, 2);
                     
@@ -14391,7 +14543,7 @@ window.SkillTreeUI = SkillTreeUI;
                 case 'stats': title = 'Estatísticas'; contentHtml = this.renderStatsContent(); break;
                 case 'settings': title = 'Configurações'; contentHtml = this.renderSettingsContent(); break;
                 case 'achievements': title = 'Conquistas'; contentHtml = this.renderAchievementsContent ? this.renderAchievementsContent() : 'Em breve'; break;
-                case 'lore': title = 'Grimório de Aethelgard'; contentHtml = this.renderLoreContent(); break;
+                case 'lore': title = 'Grimório de Krevathorn'; contentHtml = this.renderLoreContent(); break;
             }
 
             panel.innerHTML = `
@@ -14800,7 +14952,40 @@ window.GameBootstrap = {
             this._startUI();
             Debug.info('Game started: ' + cls + ' class, mode: ' + gameMode);
             console.log('[BOOTSTRAP] player=' + (player ? 'YES' : 'NO') + ', map=' + (map ? 'YES' : 'NO') + ', gameState=' + gameState);
+            if (typeof SaveSystem !== 'undefined') Debug.safe(() => SaveSystem.save(), 'autosaveNewGame');
         }, 'startGame');
+    },
+
+    // Resume a previously saved run: rebuilds a fresh floor at the saved
+    // dungeon level/biome (same as a normal floor transition) and restores
+    // the player's progression on top of it.
+    continueGame() {
+        const save = (typeof SaveSystem !== 'undefined') ? SaveSystem.load() : null;
+        if (!save) { this.start('warrior'); return; }
+        console.log('[BOOTSTRAP] Continuing saved game from floor', save.dungeonLevel);
+
+        Debug.safe(() => {
+            const cls = save.type || 'warrior';
+            this._resetState(cls);
+            SaveSystem.applyTo(player, save);
+            dungeonLevel = save.dungeonLevel || 1;
+            gameMode = save.gameMode || gameMode;
+            dungeonKills = save.dungeonKills || 0;
+            dungeonKillTarget = save.dungeonKillTarget || 18;
+            continuesLeft = (typeof save.continuesLeft === 'number') ? save.continuesLeft : 3;
+            if (typeof BiomeSystem !== 'undefined') {
+                BiomeSystem.currentBiome = save.biome || BiomeSystem.currentBiome;
+                BiomeSystem.dungeonsCompleted = save.dungeonsCompleted || 0;
+            }
+            if (typeof DifficultySystem !== 'undefined') DifficultySystem.dungeonLevel = dungeonLevel;
+            if (typeof prestigeLevel !== 'undefined' && save.prestigeLevel) prestigeLevel = save.prestigeLevel;
+            if (typeof totalGamesPlayed !== 'undefined' && save.totalGamesPlayed) totalGamesPlayed = save.totalGamesPlayed;
+            this._initModeSpecific(cls);
+            this._spawnInitialEntities(cls);
+            this._startUI();
+            addLog('Progresso restaurado - Piso ' + dungeonLevel);
+            Debug.info('Game continued: floor ' + dungeonLevel + ', class ' + cls);
+        }, 'continueGame');
     },
 
     _resetState(cls) {
@@ -14933,6 +15118,7 @@ if (!window.startGame || window.startGame.toString().includes('warn')) {
 } else {
     window._startGameInternal = function(cls) { window.GameBootstrap.start(cls); };
 }
+window.continueGame = function() { window.GameBootstrap.continueGame(); };
 
 
 </script>
@@ -14972,7 +15158,7 @@ const TutorialSystem = {
     STAGES_QUICK: [
         {
             id: 'welcome_quick',
-            title: ' Bem-vindo a Aethelgard!',
+            title: ' Bem-vindo a Krevathorn!',
             lines: [
                 'Tutorial rpido  4 etapas, ~1 minuto.',
                 '',
@@ -16192,11 +16378,26 @@ Input.init();
         function releaseWakeLock() {
             if (wakeLock) { wakeLock.release(); wakeLock = null; }
         }
+        function _refreshContinueButton() {
+            var btn = document.getElementById('continue-run-btn');
+            if (!btn) return;
+            var has = (typeof SaveSystem !== 'undefined') && SaveSystem.hasSave();
+            btn.style.display = has ? 'block' : 'none';
+        }
+        _refreshContinueButton();
+        window._refreshContinueButton = _refreshContinueButton;
+
         // Request wake lock when game starts
         document.addEventListener('visibilitychange', function() {
             if (document.visibilityState === 'visible' && gameState === 'PLAYING') {
                 requestWakeLock();
             }
+            if (document.visibilityState === 'hidden' && typeof SaveSystem !== 'undefined') {
+                Debug.safe(() => SaveSystem.save(), 'autosaveVisibility');
+            }
+        });
+        window.addEventListener('pagehide', function() {
+            if (typeof SaveSystem !== 'undefined') Debug.safe(() => SaveSystem.save(), 'autosavePagehide');
         });
 
         // --- Fullscreen API ---
